@@ -1,18 +1,18 @@
 {
-  "name": "theia-ide-launcher-ext",
-  "version": "1.76.1",
+  "name": "brokspace-ide-launcher-ext",
+  "version": "0.1.0",
   "keywords": [
     "theia-extension"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eclipse-theia/theia-ide.git"
+    "url": "git+https://github.com/brokspace/ide.git"
   },
   "bugs": {
-    "url": "https://github.com/eclipse-theia/theia-ide/issues"
+    "url": "https://github.com/brokspace/ide/issues"
   },
-  "homepage": "https://github.com/eclipse-theia/theia-ide",
+  "homepage": "https://brokspace.org",
   "files": [
     "lib",
     "src"
@@ -41,5 +41,6 @@
       "frontendElectron": "lib/browser/create-launcher-frontend-module",
       "backend": "lib/node/launcher-backend-module"
     }
-  ]
+  ],
+  "author": "Brokspace contributors"
 }

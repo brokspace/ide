@@ -1,161 +1,96 @@
-<br/>
-<div id="theia-logo" align="center">
-    <br />
-    <img src="https://raw.githubusercontent.com/eclipse-theia/theia-ide/master/theia-extensions/product/src/browser/icons/TheiaIDE.png" alt="Theia Logo" width="300"/>
-    <h3>Eclipse Theia IDE</h3>
-</div>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/brokspace-on-dark.svg">
+    <img src=".github/brokspace.svg" alt="Brokspace" height="88">
+  </picture>
+</p>
+<p align="center"><b>Brokspace IDE: your workspace, understood.</b></p>
 
-<div id="badges" align="center">
+An IDE with Brokspace built in: local-first search across every repository in
+your folder, an agent that answers from your own LLM with the sources it used,
+reviews and commit messages, skills and shards. Use Brokspace in **IDE mode**
+(this app) or **CLI mode** (`brok`); both share the same workspace.
 
-The Eclipse Theia IDE is built with this project.\
-Eclipse Theia IDE also serves as a template for building desktop-based products based on the Eclipse Theia platform.
+Built on [Eclipse Theia](https://theia-ide.org), so VS Code extensions from
+[Open VSX](https://open-vsx.org) work too.
 
-</div>
+## What's inside
 
-[![Installers](https://img.shields.io/badge/download-installers-blue.svg?style=flat-curved)](https://theia-ide.org/#theiaidedownload)
-[![Build](https://github.com/eclipse-theia/theia-ide/actions/workflows/build.yml/badge.svg?event=schedule)](https://github.com/eclipse-theia/theia-ide/actions/workflows/build.yml?query=event%3Aschedule)
-[![Next Build](https://github.com/eclipse-theia/theia-ide/actions/workflows/build-next-release.yml/badge.svg?branch=master)](https://github.com/eclipse-theia/theia-ide/actions/workflows/build-next-release.yml)
+| | |
+|---|---|
+| **Home** | Ask about the workspace or describe a change; suggestions to start |
+| **Brokspace view** | Workspace status (service, index, model), hybrid search with results that open at the line, the agent's actions, skills and shards |
+| **Brokspace agent** | The default chat agent: answers from your LLM grounded in the index, follow-ups, `/review`, `/review staged`, `/review base main`, `/skill <name> <input>` |
+| **Source control** | ✨ in the Source Control toolbar writes the commit message from the staged changes |
+| **Brokspace menu and commands** | Set up, start/stop, rebuild the index, doctor, install shards, export skills to coding agents |
+| **Status bar** | Service state and model at a glance |
+| **brok included** | `brok` and `brok-agent` ship with the IDE and are on `PATH` in its terminals; the installers put them on your `PATH` too |
+| **Themes** | Brokspace Dark (default) and Brokspace Light |
 
-[Main Theia Repository](https://github.com/eclipse-theia/theia)
+The IDE talks to Brokspace only through the `brok` CLI and its `--json`
+output ([contract](https://github.com/brokspace/brok/blob/main/docs/integrations.md)),
+so anything the IDE does, you can script. It needs brok 0.2.4 or newer.
 
-[Visit the Theia website](http://www.theia-ide.org) for more documentation: [Using the Theia IDE](https://theia-ide.org/docs/user_getting_started/), [Packaging Theia as a Desktop Product](https://theia-ide.org/docs/blueprint_documentation/).
+## Install
+
+| | |
+|---|---|
+| **macOS** | `brew install --cask brokspace/tap/brokspace-ide` |
+| **Debian / Ubuntu** | Add the [Brokspace APT repository](https://brokspace.github.io/apt), then `sudo apt install brokspace-ide` |
+| **Linux (other)** | AppImage or `.tar.gz` from the [latest release](https://github.com/brokspace/ide/releases/latest) |
+| **Windows** | `BrokspaceIDE-<version>-windows-x64-setup.exe` from the [latest release](https://github.com/brokspace/ide/releases/latest) |
+
+The IDE updates itself from GitHub Releases. Builds are not code-signed yet
+([plan](https://github.com/brokspace/brok/blob/main/docs/maintainers/code-signing.md)):
+on macOS, open it the first time with right click > Open; on Windows, choose
+"More info > Run anyway" in SmartScreen.
+
+You need an LLM for answers (search works without one): see
+[getting started](https://github.com/brokspace/brok/blob/main/docs/getting-started.md#2-get-a-local-llm-optional).
+
+## Develop
+
+Requirements: Node.js 24, Yarn 1, git, and on Linux `libxkbfile-dev` and
+`libsecret-1-dev` (or use `.devcontainer/Dockerfile`).
+
+```sh
+yarn                       # install
+yarn build:extensions      # compile theia-extensions/*
+yarn download:plugins      # VS Code built-in extensions + plugins-local/*
+yarn browser build         # browser app (fastest to try)
+yarn browser start         # http://localhost:3000
+
+node scripts/fetch-brok.mjs   # bundle brok for this machine
+yarn electron build && yarn electron start
+yarn electron package         # installers in applications/electron/dist
+```
+
+| Path | What |
+|---|---|
+| `applications/browser`, `applications/electron` | The two app targets and their Theia configuration (defaults: theme, AI, Brokspace agent) |
+| `theia-extensions/brok` | Brokspace integration: backend service over the `brok` CLI, view, chat agent, commands, status bar |
+| `theia-extensions/product` | Branding: home page, about dialog, help menu |
+| `theia-extensions/updater`, `launcher` | Auto-update from GitHub Releases; CLI launcher for AppImage |
+| `plugins-local/brokspace-theme` | Brokspace Dark and Light color themes |
+| `packaging/homebrew`, `packaging/apt` | Homebrew cask and formula, APT repository builder |
+| `scripts/fetch-brok.mjs` | Downloads and verifies brok and brok-agent for packaging |
+
+## Release
+
+1. Bump `version` in the root and workspace `package.json` files and
+   `lerna.json`, update the changelog, merge.
+2. Tag `vX.Y.Z` and push it. The Release workflow builds every platform,
+   uploads installers with `.sha256` files and update metadata, publishes the
+   release, then updates the Homebrew tap and the APT repository when their
+   secrets are set (see `.github/workflows/release.yml`).
+
+## Credits
+
+Based on the [Eclipse Theia IDE](https://github.com/eclipse-theia/theia-ide)
+(MIT); upstream history is kept, so Theia updates merge from the
+`upstream` remote. See [NOTICE.md](NOTICE.md).
 
 ## License
 
-- [MIT](LICENSE)
-
-## Trademark
-
-"Theia" is a trademark of the Eclipse Foundation
-<https://www.eclipse.org/theia>
-
-## What is this?
-
-The Eclipse Theia IDE is a modern and open IDE for cloud and desktop. The Theia IDE is based on the [Theia platform](https://theia-ide.org).
-The Theia IDE is available as a [downloadable desktop application](https://theia-ide.org/#theiaidedownload). You can also try the latest version of the Theia IDE online. The online test version is limited to 30 minutes per session and hosted via Theia.cloud. Finally, we provide an [experimental Docker image](#docker) for hosting the Theia IDE online.
-
-The Eclipse Theia IDE also serves as a **template** for building desktop-based products based on the Eclipse Theia platform, as well as to showcase Eclipse Theia capabilities. It is made up of a subset of existing Eclipse Theia features and extensions. [Documentation is available](https://theia-ide.org/docs/composing_applications/) to help you customize and build your own Eclipse Theia-based product.
-
-## Theia IDE vs Theia Blueprint
-
-The Theia IDE has been rebranded from its original name “Theia Blueprint”. You can therefore assume the terms “Theia IDE” and “Theia Blueprint” to be synonymous.
-
-## Development
-
-### Requirements
-
-Please check Theia's [prerequisites](https://github.com/eclipse-theia/theia/blob/master/doc/Developing.md#prerequisites), and keep node versions aligned between Theia IDE and that of the referenced Theia version.
-
-### Documentation
-
-Documentation on how to package Theia as a Desktop Product may be found [here](https://theia-ide.org/docs/blueprint_documentation/).
-
-For adopters building their own products based on this template, see the [Adopter Guide](ADOPTER.md) for additional considerations.
-
-### Repository Structure
-
-- Root level configures mono-repo build with lerna
-- `applications` groups the different app targets
-  - `browser` contains a browser based version of Eclipse Theia IDE that may be packaged as a Docker image
-  - `electron` contains the electron app to package, packaging configuration, and E2E tests for the electron target.
-- `theia-extensions` groups the various custom theia extensions for the Eclipse Theia IDE
-  - `product` contains a Theia extension contributing the product branding (about dialogue and welcome page).
-  - `updater` contains a Theia extension contributing the update mechanism and corresponding UI elements (based on the electron updater).
-  - `launcher` contains a Theia extension contributing, for AppImage applications, the option to create a script that allows starting the Eclipse Theia IDE from the command line by calling the 'theia' command.
-- `patches` contains patches applied to upstream packages
-
-### Build
-
-For development and casual testing of the Eclipse Theia IDE, one can build it in "dev" mode. This permits building the IDE on systems with less resources, like a Raspberry Pi 4B with 4GB of RAM.
-
-NOTE: If manually building after updating dependencies or pulling to a newer commit, run `git clean -xfd` to help avoid runtime conflicts.
-
-```sh
-# Build "dev" version of the app. It's quicker, uses less resources,
-# but the front end app is not "minified"
-yarn && yarn build:dev && yarn download:plugins
-```
-
-Production applications:
-
-```sh
-# Build production version of the Eclipse Theia IDE app
-yarn && yarn build && yarn download:plugins
-```
-
-### Package the Applications
-
-Currently we only produce packages for the Electron application.
-
-_If you are trying to compile for ARM on an ARM machine, you may want to follow [these steps](https://github.com/eclipse-theia/theia-ide/issues/690#issuecomment-4157768849) beforehand._
-
-```sh
-yarn package:applications
-# or
-yarn electron package
-```
-
-The packaged application is located in `applications/electron/dist`.
-
-### Create a Preview Electron Application (without packaging it)
-
-```sh
-yarn electron package:preview
-```
-
-The packaged application is located in `applications/electron/dist`.
-
-### Running E2E Tests on Electron
-
-The E2E tests are basic UI tests of the actual application, run against the preview of the packaged application.
-
-```sh
-yarn electron package:preview
-yarn electron test
-```
-
-### Running Browser app
-
-The browser app may be started with
-
-```sh
-yarn browser start
-```
-
-Then connect to <http://localhost:3000/>.
-
-### Developing with Local Theia Framework
-
-To build and test the Theia IDE against a local development version of the Theia framework, see [docs/developing-with-local-theia.md](docs/developing-with-local-theia.md).
-
-### Troubleshooting
-
-- [_"Don't expect that you can build app for all platforms on one platform."_](https://www.electron.build/multi-platform-build)
-
-### Reporting Feature Requests and Bugs
-
-The features in the Eclipse Theia IDE are based on Theia and the included extensions/plugins. For bugs in Theia please consider opening an issue in the [Theia project on Github](https://github.com/eclipse-theia/theia/issues/new/choose).
-The Eclipse Theia IDE only packages existing functionality into a product and installers for the product. If you believe there is a mistake in packaging, something needs to be added to the packaging or the installers do not work properly, please [open an issue on Github](https://github.com/eclipse-theia/theia-ide/issues/new/choose) to let us know.
-
-### Linux (AppImage)
-
-The AppImage distribution of the Theia IDE requires FUSE (`libfuse2`) to be installed on the system. This is a general requirement of the AppImage format, not specific to Theia IDE. See the [AppImage documentation](https://docs.appimage.org/user-guide/troubleshooting/fuse.html) for details and installation instructions per distribution.
-
-### Docker
-
-The Docker image of the Theia IDE is currently in _experimental state_. It is built from the same sources and packages as the desktop version, but it is not part of the [preview test](https://github.com/eclipse-theia/theia-ide/blob/master/PUBLISHING.md#preview-testing-and-release-process-for-the-theia-ide).
-You can find a prebuilt Docker image of the IDE [here](https://github.com/eclipse-theia/theia-ide/pkgs/container/theia-ide%2Ftheia-ide).
-
-You can also create the Docker image for the Eclipse Theia IDE based on the browser app with the following build command:
-
-```sh
-docker build -t theia-ide -f browser.Dockerfile .
-```
-
-You may then run this with
-
-```sh
-docker run -p=3000:3000 --rm theia-ide
-```
-
-Then connect to <http://localhost:3000/>.
+MIT, see [LICENSE](LICENSE). The Brokspace name and logo are covered by the
+[brand license](https://github.com/brokspace/brand).

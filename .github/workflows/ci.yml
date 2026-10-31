@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (browser app)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      PUPPETEER_SKIP_DOWNLOAD: 1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - name: System libraries for native modules
+        run: sudo apt-get update && sudo apt-get install -y libxkbfile-dev libsecret-1-dev
+      - name: Install
+        run: yarn install --frozen-lockfile --network-timeout 600000
+      - name: Build extensions
+        run: yarn build:extensions
+      - name: Plugins
+        run: yarn download:plugins
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Build the browser app
+        run: yarn browser build

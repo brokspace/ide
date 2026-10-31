@@ -1,0 +1,59 @@
+class Brok < Formula
+  desc "Local-first search, agents and skills for every developer"
+  homepage "https://brokspace.org"
+  version "{{BROK_VERSION}}"
+  license any_of: ["MIT", "Apache-2.0"]
+
+  on_macos do
+    on_arm do
+      url "https://github.com/brokspace/brok/releases/download/v{{BROK_VERSION}}/brok-macos-aarch64"
+      sha256 "{{BROK_SHA256_MACOS_AARCH64}}"
+
+      resource "brok-agent" do
+        url "https://github.com/brokspace/brok-agent/releases/download/v{{AGENT_VERSION}}/brok-agent-macos-aarch64"
+        sha256 "{{AGENT_SHA256_MACOS_AARCH64}}"
+      end
+    end
+    on_intel do
+      url "https://github.com/brokspace/brok/releases/download/v{{BROK_VERSION}}/brok-macos-x86_64"
+      sha256 "{{BROK_SHA256_MACOS_X86_64}}"
+
+      resource "brok-agent" do
+        url "https://github.com/brokspace/brok-agent/releases/download/v{{AGENT_VERSION}}/brok-agent-macos-x86_64"
+        sha256 "{{AGENT_SHA256_MACOS_X86_64}}"
+      end
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "https://github.com/brokspace/brok/releases/download/v{{BROK_VERSION}}/brok-linux-aarch64"
+      sha256 "{{BROK_SHA256_LINUX_AARCH64}}"
+
+      resource "brok-agent" do
+        url "https://github.com/brokspace/brok-agent/releases/download/v{{AGENT_VERSION}}/brok-agent-linux-aarch64"
+        sha256 "{{AGENT_SHA256_LINUX_AARCH64}}"
+      end
+    end
+    on_intel do
+      url "https://github.com/brokspace/brok/releases/download/v{{BROK_VERSION}}/brok-linux-x86_64"
+      sha256 "{{BROK_SHA256_LINUX_X86_64}}"
+
+      resource "brok-agent" do
+        url "https://github.com/brokspace/brok-agent/releases/download/v{{AGENT_VERSION}}/brok-agent-linux-x86_64"
+        sha256 "{{AGENT_SHA256_LINUX_X86_64}}"
+      end
+    end
+  end
+
+  def install
+    bin.install Dir["brok-*"].first => "brok"
+    resource("brok-agent").stage do
+      bin.install Dir["brok-agent-*"].first => "brok-agent"
+    end
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/brok --version")
+  end
+end

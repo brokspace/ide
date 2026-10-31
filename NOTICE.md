@@ -1,3 +1,14 @@
+# Notices for Brokspace IDE
+
+Brokspace IDE is based on the Eclipse Theia IDE
+(https://github.com/eclipse-theia/theia-ide, MIT) and built on the Eclipse
+Theia platform. The notices of that project follow.
+
+Brokspace, its name and logo are trademarks of the Brokspace project; see
+https://github.com/brokspace/brand.
+
+---
+
 # Notices for Eclipse Theia
 
 This content is produced and maintained by the Eclipse Theia project.

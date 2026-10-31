@@ -17,9 +17,9 @@ import { DesktopFileService } from './desktopfile-service';
 
 export namespace LauncherCommands {
     export const CREATE_LAUNCHER: Command = {
-        id: 'theia-ide.launcher.create',
+        id: 'brokspace-ide.launcher.create',
         label: 'Create CLI Launcher',
-        category: 'Theia IDE'
+        category: 'Brokspace IDE'
     };
 }
 

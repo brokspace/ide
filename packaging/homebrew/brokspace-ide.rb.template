@@ -1,0 +1,33 @@
+cask "brokspace-ide" do
+  arch arm: "arm64", intel: "x64"
+
+  version "{{VERSION}}"
+  sha256 arm:   "{{SHA256_ARM64}}",
+         intel: "{{SHA256_X64}}"
+
+  url "https://github.com/brokspace/ide/releases/download/v#{version}/BrokspaceIDE-#{version}-macos-#{arch}.dmg",
+      verified: "github.com/brokspace/ide/"
+  name "Brokspace IDE"
+  desc "IDE with local-first search, agents, skills and shards"
+  homepage "https://brokspace.org/"
+
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  depends_on macos: ">= :monterey"
+
+  app "Brokspace IDE.app"
+  # brok ships inside the app: link it so it works in any terminal.
+  binary "#{appdir}/Brokspace IDE.app/Contents/Resources/bin/brok"
+  binary "#{appdir}/Brokspace IDE.app/Contents/Resources/bin/brok-agent"
+
+  zap trash: [
+    "~/.brokspace-ide",
+    "~/Library/Application Support/Brokspace IDE",
+    "~/Library/Logs/Brokspace IDE",
+    "~/Library/Preferences/org.brokspace.ide.plist",
+    "~/Library/Saved Application State/org.brokspace.ide.savedState",
+  ]
+end

@@ -7,6 +7,9 @@
   },
   "references": [
     {
+      "path": "theia-extensions/brok"
+    },
+    {
       "path": "theia-extensions/launcher"
     },
     {

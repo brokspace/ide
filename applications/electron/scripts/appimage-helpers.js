@@ -35,7 +35,7 @@ function writePluginCopyMetadata(metadataPath, version) {
  * Copies bundled plugins from AppImage to user directory if needed.
  * @param bundledPluginsDir - Path to bundled plugins in AppImage
  * @param userPluginsDir - Path to user built-in plugins directory
- * @param currentVersion - Current Theia IDE version
+ * @param currentVersion - Current Brokspace IDE version
  * @returns true if the builtins were copied to the user dir, false if there was an error
  */
 function copyBundledPlugins(bundledPluginsDir, userPluginsDir, currentVersion) {
@@ -53,7 +53,7 @@ function copyBundledPlugins(bundledPluginsDir, userPluginsDir, currentVersion) {
     if (!metadata) {
         shouldCopy = true;
     } else if (metadata.version !== currentVersion) {
-        console.log(`Theia IDE updated from ${metadata.version} to ${currentVersion}. Updating built-in plugins...`);
+        console.log(`Brokspace IDE updated from ${metadata.version} to ${currentVersion}. Updating built-in plugins...`);
         shouldCopy = true;
     }
 

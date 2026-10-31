@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name": "theia-ide-updater-ext",
-  "version": "1.76.1",
-  "description": "Eclipse Theia IDE Updater",
+  "name": "brokspace-ide-updater-ext",
+  "version": "0.1.0",
+  "description": "Brokspace IDE updater (GitHub Releases)",
   "dependencies": {
     "@theia/core": "1.76.0",
     "@theia/output": "1.76.0",
@@ -30,12 +30,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eclipse-theia/theia-ide.git"
+    "url": "git+https://github.com/brokspace/ide.git"
   },
   "bugs": {
-    "url": "https://github.com/eclipse-theia/theia-ide/issues"
+    "url": "https://github.com/brokspace/ide/issues"
   },
-  "homepage": "https://github.com/eclipse-theia/theia-ide",
+  "homepage": "https://brokspace.org",
   "files": [
     "lib",
     "src"
@@ -47,5 +47,6 @@
     "lint:fix": "eslint --ext js,jsx,ts,tsx src --fix",
     "update:theia": "ts-node ../../scripts/update-theia-version.ts",
     "update:next": "ts-node ../../scripts/update-theia-version.ts next"
-  }
+  },
+  "author": "Brokspace contributors"
 }

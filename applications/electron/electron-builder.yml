@@ -1,8 +1,9 @@
-appId: eclipse.theia
-productName: TheiaIDE
-copyright: Copyright © 2020-2026 Eclipse Foundation, Inc
+appId: org.brokspace.ide
+productName: Brokspace IDE
+executableName: brokspace-ide
+copyright: Copyright © 2026 Brokspace contributors
 electronDist: ../../node_modules/electron/dist
-electronVersion: 42.11.16
+electronVersion: 44.9.1
 asar: true
 asarUnpack:
   - "**/lib/backend/native/**"
@@ -14,72 +15,86 @@ npmRebuild: false
 directories:
   buildResources: resources
 
-# node_modules and package.json are copied automatically
-# Exclude node_modules manually because electron is copied by electron-builder and we are using a bundled backend
+# node_modules is excluded: electron-builder copies Electron, and the backend is bundled.
 files:
   - src-gen
   - lib
   - resources/icons/WindowIcon/512-512.png
-  - resources/TheiaIDESplash.svg
+  - resources/BrokspaceSplash.svg
   - scripts
   - "!**node_modules/**"
 extraResources:
   - from: ../../plugins
     to: app/plugins
+  # brok and brok-agent (scripts/fetch-brok.mjs), outside the asar so they can run.
+  - from: resources/bin
+    to: bin
+
+# Updates come from GitHub Releases (latest*.yml are attached to each release).
+publish:
+  provider: github
+  owner: brokspace
+  repo: ide
 
 win:
-  icon: resources/icons/WindowsLauncherIcons/TheiaIDE.ico
+  icon: resources/icon.ico
   target:
     - nsis
-  publish:
-    provider: generic
-    url: "https://download.eclipse.org/theia/ide/${version}/windows"
-    useMultipleRangeRequest: false
 mac:
-  icon: resources/icons/MacLauncherIcons/icon.icns
+  icon: resources/icons/icon.png
   category: public.app-category.developer-tools
   protocols:
-    - name: theia
+    - name: brokspace-ide
       schemes:
-        - theia
+        - brokspace-ide
   darkModeSupport: true
   target:
     - dmg
     - zip
-  publish:
-    provider: generic
-    url: "https://download.eclipse.org/theia/ide/latest/macos"
 linux:
   icon: resources/icons/LinuxLauncherIcons
   category: Development
+  synopsis: Your workspace, understood
+  description: The Brokspace IDE, with local-first search, agents, skills and shards.
   mimeTypes:
     - inode/directory
-  vendor: Eclipse Foundation, Inc
+  vendor: Brokspace
+  maintainer: Brokspace contributors <hello@brokspace.org>
   target:
     - deb
     - AppImage
-  publish:
-    provider: generic
-    url: "https://download.eclipse.org/theia/ide/latest/linux"
+    - tar.gz
 
 nsis:
-  menuCategory: true
+  menuCategory: false
   oneClick: false
   perMachine: false
-  installerHeaderIcon: resources/icons/WindowsLauncherIcons/TheiaIDE.ico
-  installerIcon: resources/icons/WindowsLauncherIcons/TheiaIDE.ico
-  uninstallerIcon: resources/icons/WindowsLauncherIcons/TheiaIDE.ico
-  installerSidebar: resources/icons/InstallerSidebarImage/164-314Windows.bmp
-  uninstallerSidebar: resources/icons/InstallerSidebarImage/164-314Windows.bmp
+  installerHeaderIcon: resources/icon.ico
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerSidebar: resources/installerSidebar.bmp
+  uninstallerSidebar: resources/installerSidebar.bmp
   allowToChangeInstallationDirectory: true
-  runAfterFinish: false
-  artifactName: ${productName}Setup.${ext}
-  license: LICENSE
+  runAfterFinish: true
+  # Puts brok (resources\bin) on the user's PATH; see resources/installer.nsh.
+  include: resources/installer.nsh
+  artifactName: BrokspaceIDE-${version}-windows-${arch}-setup.${ext}
+  license: resources/LICENSE
 dmg:
-  artifactName: ${productName}.${ext}
+  artifactName: BrokspaceIDE-${version}-macos-${arch}.${ext}
+  title: Brokspace IDE
 deb:
-  artifactName: ${productName}.${ext}
+  artifactName: brokspace-ide_${version}_${arch}.${ext}
+  # Links /usr/bin/brok and /usr/bin/brokspace-ide; see resources/deb-*.sh.
+  afterInstall: resources/deb-postinst.sh
+  afterRemove: resources/deb-postrm.sh
+  depends:
+    - git
 appImage:
-  artifactName: ${productName}.${ext}
+  artifactName: BrokspaceIDE-${version}-linux-${arch}.${ext}
+zip:
+  artifactName: BrokspaceIDE-${version}-macos-${arch}.${ext}
+tar:
+  artifactName: brokspace-ide-${version}-linux-${arch}.${ext}
 
 afterPack: ./scripts/after-pack.js

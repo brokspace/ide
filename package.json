@@ -1,22 +1,21 @@
 {
   "private": true,
-  "version": "1.76.1",
+  "version": "0.1.0",
   "license": "MIT",
-  "author": "Rob Moran <github@thegecko.org>",
-  "homepage": "https://github.com/eclipse-theia/theia-ide#readme",
+  "author": "Brokspace contributors",
+  "homepage": "https://brokspace.org",
   "bugs": {
-    "url": "https://github.com/eclipse-theia/theia/issues"
+    "url": "https://github.com/brokspace/ide/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/eclipse-theia/theia-ide.git"
+    "url": "git+https://github.com/brokspace/ide.git"
   },
   "engines": {
     "yarn": ">=1.7.0 <2",
     "node": ">=24"
   },
   "devDependencies": {
-    "@eclipse-dash/nodejs-wrapper": "^0.0.1",
     "@theia/cli": "1.76.0",
     "@types/yargs": "^17",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
@@ -39,39 +38,29 @@
     "clean": "lerna run clean && rimraf node_modules",
     "build": "yarn build:extensions && yarn build:applications",
     "build:dev": "yarn build:extensions && yarn build:applications:dev",
-    "build:applications": "lerna run --scope=\"theia-ide*app\" --ignore=\"theia-ide-next*\" build:prod --concurrency 1",
-    "build:applications:dev": "lerna run --scope=\"theia-ide*app\" --ignore=\"theia-ide-next*\" build --concurrency 1",
-    "build:applications:next": "lerna run --scope=\"theia-ide-next*\" build:prod --concurrency 1",
-    "build:applications:next:dev": "lerna run --scope=\"theia-ide-next*\" build --concurrency 1",
-    "build:extensions": "lerna run --scope=\"theia-ide*ext\" build",
-    "build:local-theia": "node scripts/build-with-local-theia.js",
-    "download:plugins": "theia download:plugins --rate-limit=15 --parallel=false && yarn permissions:writeable",
-    "package:applications": "lerna run --scope=\"theia-ide*app\" --ignore=\"theia-ide-next*\" package --concurrency 1",
-    "package:applications:preview": "lerna run --scope=\"theia-ide*app\" --ignore=\"theia-ide-next*\" package:preview --concurrency 1",
-    "package:applications:prod": "lerna run --scope=\"theia-ide*app\" --ignore=\"theia-ide-next*\" package:prod --concurrency 1",
-    "package:applications:next": "lerna run --scope=\"theia-ide-next*\" package --concurrency 1",
+    "build:applications": "lerna run --scope=\"brokspace-ide*app\" build:prod --concurrency 1",
+    "build:applications:dev": "lerna run --scope=\"brokspace-ide*app\" build --concurrency 1",
+    "build:extensions": "lerna run --scope=\"brokspace-ide*ext\" build",
+    "download:plugins": "theia download:plugins --rate-limit=15 --parallel=false && yarn plugins:local && yarn permissions:writeable",
+    "package:applications": "lerna run --scope=\"brokspace-ide*app\" package --concurrency 1",
+    "package:applications:preview": "lerna run --scope=\"brokspace-ide*app\" package:preview --concurrency 1",
+    "package:applications:prod": "lerna run --scope=\"brokspace-ide*app\" package:prod --concurrency 1",
     "permissions:writeable": "ts-node scripts/make-files-writeable.ts plugins",
     "watch": "lerna run --parallel watch",
     "test": "lerna run test",
     "electron": "yarn --cwd applications/electron",
-    "electron-next": "yarn --cwd applications/electron-next",
     "browser": "yarn --cwd applications/browser",
     "update:theia": "ts-node scripts/update-theia-version.ts",
     "update:theia:children": "lerna run update:theia -- ",
-    "update:next": "ts-node scripts/update-theia-version.ts next && lerna run update:next",
-    "release:prepare": "ts-node scripts/prepare-release.ts",
     "lint": "eslint --ext js,jsx,ts,tsx scripts && lerna run lint",
     "lint:fix": "eslint --ext js,jsx,ts,tsx scripts --fix && lerna run lint:fix",
-    "license:check:fetch-jar": "node scripts/fetch-dash-licenses-jar.js",
-    "license:check": "yarn license:check:fetch-jar && npx dash-licenses-wrapper  --configFile=./configs/license-check-config.json",
-    "license:check:review": "yarn license:check:fetch-jar && npx dash-licenses-wrapper  --configFile=./configs/license-check-config.json --review",
-    "postinstall": "theia-patch && npx patch-package --patch-dir patches"
+    "postinstall": "theia-patch && npx patch-package --patch-dir patches",
+    "fetch:brok": "node scripts/fetch-brok.mjs",
+    "plugins:local": "node scripts/copy-local-plugins.mjs"
   },
   "theiaPluginsDir": "plugins",
   "theiaPlugins": {
-    "vscode-builtin-extensions": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode-builtin-extensions-1.108.2.tar.gz",
-    "vscjava.vscode-java-pack": "https://open-vsx.org/api/vscjava/vscode-java-pack/0.30.5/file/vscjava.vscode-java-pack-0.30.5.vsix",
-    "vscjava.vscode-java-dependency": "https://open-vsx.org/api/vscjava/vscode-java-dependency/0.27.0/file/vscjava.vscode-java-dependency-0.27.0.vsix"
+    "vscode-builtin-extensions": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode-builtin-extensions-1.108.2.tar.gz"
   },
   "theiaPluginsExcludeIds": [
     "ms-vscode.js-debug-companion",
@@ -100,5 +89,6 @@
     "**/uuid": "^11.1.1",
     "**/mocha": "^11.0.0",
     "lerna/js-yaml": "^4.3.1"
-  }
+  },
+  "name": "brokspace-ide"
 }

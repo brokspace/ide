@@ -1,0 +1,150 @@
+name: Release
+
+# Tag vX.Y.Z (matching package.json) to build and publish Brokspace IDE for
+# Linux (deb, AppImage, tar.gz), macOS (dmg, zip) and Windows (NSIS), with
+# brok and brok-agent bundled. Optional follow-ups, each skipped when its
+# secret is missing:
+#   HOMEBREW_TAP_TOKEN  - update brokspace/homebrew-tap (Casks/brokspace-ide.rb)
+#   APT_GPG_PRIVATE_KEY, APT_GPG_KEY_ID, APT_REPO_TOKEN - publish the APT repository (brokspace/apt, GitHub Pages)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build (e.g. v0.1.0)
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --generate-notes --title "Brokspace IDE $TAG"
+
+  package:
+    needs: create-release
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-x64, os: ubuntu-latest, platform: linux, arch: x86_64 }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, platform: linux, arch: aarch64 }
+          - { name: macos-arm64, os: macos-latest, platform: macos, arch: aarch64 }
+          - { name: macos-x64, os: macos-15-intel, platform: macos, arch: x86_64 }
+          - { name: windows-x64, os: windows-latest, platform: windows, arch: x86_64 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - name: System libraries for native modules
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libxkbfile-dev libsecret-1-dev rpm
+      - name: Install
+        run: yarn install --frozen-lockfile --network-timeout 600000
+      - name: Bundle brok and brok-agent
+        run: node scripts/fetch-brok.mjs --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Build
+        run: yarn build:extensions && yarn download:plugins && yarn electron build:prod
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Package
+        run: yarn electron package
+      - name: Checksums and upload
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd applications/electron/dist
+          shopt -s nullglob
+          files=(*.deb *.AppImage *.tar.gz *.dmg *.zip *.exe *.blockmap latest*.yml)
+          for f in *.deb *.AppImage *.tar.gz *.dmg *.zip *.exe; do
+            if command -v sha256sum >/dev/null; then sha256sum "$f" | cut -d' ' -f1 > "$f.sha256"; else shasum -a 256 "$f" | cut -d' ' -f1 > "$f.sha256"; fi
+            files+=("$f.sha256")
+          done
+          ls -la
+          gh release upload "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+      - name: Keep the debs for the APT repository
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.name }}
+          path: applications/electron/dist/*.deb
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+
+  homebrew:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - name: Update brokspace/homebrew-tap
+        env:
+          TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "::notice::HOMEBREW_TAP_TOKEN not set; skipping the Homebrew cask"; exit 0; fi
+          git clone "https://x-access-token:${TOKEN}@github.com/brokspace/homebrew-tap.git" tap
+          node packaging/homebrew/render.mjs --ide "${TAG#v}" --out tap
+          cd tap
+          git config user.name "brokspace-bot"
+          git config user.email "brokspace-bot@users.noreply.github.com"
+          git add Casks/brokspace-ide.rb
+          git commit -m "brokspace-ide ${TAG#v}" || exit 0
+          git push
+
+  apt:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: deb-*
+          path: debs
+          merge-multiple: true
+      - name: Publish brokspace/apt
+        env:
+          GPG_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+          APT_GPG_KEY_ID: ${{ secrets.APT_GPG_KEY_ID }}
+          TOKEN: ${{ secrets.APT_REPO_TOKEN }}
+        run: |
+          if [ -z "$GPG_KEY" ] || [ -z "$APT_GPG_KEY_ID" ] || [ -z "$TOKEN" ]; then echo "::notice::APT secrets not set; skipping the APT repository"; exit 0; fi
+          sudo apt-get update && sudo apt-get install -y apt-utils
+          echo "$GPG_KEY" | gpg --batch --import
+          git clone --branch gh-pages "https://x-access-token:${TOKEN}@github.com/brokspace/apt.git" site || { git clone "https://x-access-token:${TOKEN}@github.com/brokspace/apt.git" site && git -C site checkout --orphan gh-pages; }
+          bash packaging/apt/build-repo.sh debs site
+          cd site
+          git config user.name "brokspace-bot"
+          git config user.email "brokspace-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "brokspace-ide ${TAG#v}" || exit 0
+          git push origin gh-pages

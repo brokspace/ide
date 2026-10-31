@@ -1,0 +1,30 @@
+{
+  "name": "brokspace-theme",
+  "displayName": "Brokspace Theme",
+  "description": "Brokspace Dark and Brokspace Light: Nordic calm with a Forge Orange accent.",
+  "publisher": "brokspace",
+  "version": "0.1.0",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "id": "Brokspace Dark",
+        "label": "Brokspace Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/brokspace-dark.json"
+      },
+      {
+        "id": "Brokspace Light",
+        "label": "Brokspace Light",
+        "uiTheme": "vs",
+        "path": "./themes/brokspace-light.json"
+      }
+    ]
+  }
+}

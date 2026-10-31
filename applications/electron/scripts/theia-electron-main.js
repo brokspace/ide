@@ -24,7 +24,7 @@ const bundledPluginsDir = isInsideAsar
 if (isAppImage) {
     // When running as AppImage, use a user-writable directory for the built-in plugins
     // The AppImage mount point (/tmp/.mount_*) is read-only
-    const configDir = process.env.THEIA_CONFIG_DIR || path.join(os.homedir(), '.theia-ide');
+    const configDir = process.env.THEIA_CONFIG_DIR || path.join(os.homedir(), '.brokspace-ide');
     const userPluginsDir = path.join(configDir, 'builtInPlugins');
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
     const currentVersion = packageJson.version;
@@ -37,6 +37,17 @@ if (isAppImage) {
 } else {
     // Use a set of builtin plugins in our application.
     process.env.THEIA_DEFAULT_PLUGINS = `local-dir:${bundledPluginsDir}`;
+}
+
+// brok ships with the IDE (resources/bin). Expose it to the backend
+// (BROKSPACE_BIN) and put it first on PATH, so the integrated terminal, tasks
+// and coding agents started by the IDE find the same brok and brok-agent.
+const brokBin = isInsideAsar
+    ? path.join(process.resourcesPath, 'bin')
+    : path.resolve(__dirname, '../', 'resources', 'bin');
+if (fs.existsSync(brokBin)) {
+    process.env.BROKSPACE_BIN = brokBin;
+    process.env.PATH = `${brokBin}${path.delimiter}${process.env.PATH || ''}`;
 }
 
 // Handover to the auto-generated electron application handler.

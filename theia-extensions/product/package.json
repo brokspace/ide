@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name": "theia-ide-product-ext",
-  "version": "1.76.1",
-  "description": "Eclipse Theia IDE Product Branding",
+  "name": "brokspace-ide-product-ext",
+  "version": "0.1.0",
+  "description": "Brokspace IDE branding: welcome page, about dialog, help menu",
   "dependencies": {
     "@theia/ai-registry": "1.76.0",
     "@theia/core": "1.76.0",
@@ -18,8 +18,8 @@
   },
   "theiaExtensions": [
     {
-      "frontend": "lib/browser/theia-ide-frontend-module",
-      "electronMain": "lib/electron-main/theia-ide-main-module"
+      "frontend": "lib/browser/brokspace-frontend-module",
+      "electronMain": "lib/electron-main/brokspace-main-module"
     }
   ],
   "keywords": [
@@ -28,12 +28,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/eclipse-theia/theia-ide.git"
+    "url": "git+https://github.com/brokspace/ide.git"
   },
   "bugs": {
-    "url": "https://github.com/eclipse-theia/theia-ide/issues"
+    "url": "https://github.com/brokspace/ide/issues"
   },
-  "homepage": "https://github.com/eclipse-theia/theia-ide",
+  "homepage": "https://brokspace.org",
   "files": [
     "lib",
     "src"
@@ -48,5 +48,6 @@
   },
   "peerDependencies": {
     "react": "^19.2.8"
-  }
+  },
+  "author": "Brokspace contributors"
 }

@@ -1,0 +1,51 @@
+{
+  "private": true,
+  "name": "brokspace-ide-brok-ext",
+  "version": "0.1.0",
+  "description": "Brokspace in the IDE: workspace status, hybrid search, the Brokspace chat agent, skills, shards, reviews and commit messages, through the brok CLI",
+  "license": "MIT",
+  "author": "Brokspace contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brokspace/ide.git"
+  },
+  "keywords": [
+    "theia-extension"
+  ],
+  "theiaExtensions": [
+    {
+      "frontend": "lib/browser/brok-frontend-module",
+      "backend": "lib/node/brok-backend-module"
+    }
+  ],
+  "files": [
+    "lib",
+    "src"
+  ],
+  "dependencies": {
+    "@theia/ai-chat": "1.76.0",
+    "@theia/ai-chat-ui": "1.76.0",
+    "@theia/ai-core": "1.76.0",
+    "@theia/core": "1.76.0",
+    "@theia/editor": "1.76.0",
+    "@theia/filesystem": "1.76.0",
+    "@theia/output": "1.76.0",
+    "@theia/scm": "1.76.0",
+    "@theia/terminal": "1.76.0",
+    "@theia/workspace": "1.76.0"
+  },
+  "devDependencies": {
+    "rimraf": "^2.7.1",
+    "typescript": "~5.9.3"
+  },
+  "peerDependencies": {
+    "react": "^19.2.8"
+  },
+  "scripts": {
+    "clean": "rimraf lib *.tsbuildinfo",
+    "build": "tsc -b",
+    "watch": "tsc -w",
+    "lint": "eslint --ext js,jsx,ts,tsx src",
+    "lint:fix": "eslint --ext js,jsx,ts,tsx src --fix"
+  }
+}

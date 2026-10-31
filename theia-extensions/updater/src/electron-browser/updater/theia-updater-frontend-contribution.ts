@@ -218,7 +218,7 @@ export class TheiaUpdaterFrontendContribution implements CommandContribution, Me
         if (answer === 'Yes') {
             this.stopProgress();
             this.progress = await this.messageService.showProgress({
-                text: 'Theia IDE Update',
+                text: 'Brokspace IDE Update',
                 options: { cancelable: true }
             }, () => this.updater.cancel());
             let dots = 0;

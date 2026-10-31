@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="1450" viewBox="0 0 820 1450" role="img"><title>Brokspace</title><defs>
+    <linearGradient id="mark-top" x1="0" y1="0" x2="820" y2="410" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF9B57"/><stop offset=".55" stop-color="#FF8A3D"/><stop offset="1" stop-color="#F06A22"/>
+    </linearGradient>
+    <linearGradient id="mark-fold" x1="118" y1="572" x2="820" y2="410" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E05A22"/><stop offset=".55" stop-color="#F57A2E"/><stop offset="1" stop-color="#B83A16"/>
+    </linearGradient>
+    <linearGradient id="mark-flap" x1="392" y1="709" x2="820" y2="819" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6B7480"/><stop offset="1" stop-color="#2E343C"/>
+    </linearGradient>
+    <linearGradient id="mark-wedge" x1="820" y1="819" x2="0" y2="1450" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3A4049"/><stop offset="1" stop-color="#15191E"/>
+    </linearGradient>
+  </defs>
+  <polygon fill="url(#mark-top)" points="0,0 820,410 526,368 0,105"/>
+  <polygon fill="url(#mark-fold)" points="526,368 820,410 308,666 118,572"/>
+  <polygon fill="url(#mark-flap)" points="392,709 496,657 820,819 526,776"/>
+  <polygon fill="url(#mark-wedge)" points="526,776 820,819 0,1450 0,1039"/></svg>

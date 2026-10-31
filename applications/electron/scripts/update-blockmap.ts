@@ -16,7 +16,7 @@ import * as path from 'path';
 const BLOCK_MAP_FILE_SUFFIX = '.blockmap';
 
 const argv = yargs(hideBin(process.argv))
-    .option('executable', { alias: 'e', type: 'string', default: 'TheiaIDE.exe', description: 'The executable for which the blockmap needs to be updated' })
+    .option('executable', { alias: 'e', type: 'string', default: 'brokspace-ide.exe', description: 'The executable for which the blockmap needs to be updated' })
     .version(false)
     .wrap(120)
     .parseSync();

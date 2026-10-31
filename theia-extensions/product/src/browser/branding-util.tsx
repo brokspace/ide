@@ -1,174 +1,67 @@
-/********************************************************************************
- * Copyright (C) 2020 EclipseSource and others.
- *
- * This program and the accompanying materials are made available under the
- * terms of the MIT License, which is available in the project root.
- *
- * SPDX-License-Identifier: MIT
- ********************************************************************************/
+// *****************************************************************************
+// Copyright (C) 2026 Brokspace contributors.
+//
+// SPDX-License-Identifier: MIT
+// *****************************************************************************
 
 import { codicon } from '@theia/core/lib/browser';
-import { WindowService } from '@theia/core/lib/browser/window/window-service';
-import { environment } from '@theia/core/lib/common';
 import * as React from 'react';
-import { getBrandingVariant } from './theia-ide-config';
 
-export interface ExternalBrowserLinkProps {
-    text: string;
-    url: string;
-    windowService: WindowService;
-}
+export const BRAND = {
+    product: 'Brokspace IDE',
+    tagline: 'Your workspace, understood.',
+    website: 'https://brokspace.org',
+    docs: 'https://brokspace.org/docs',
+    gettingStarted: 'https://github.com/brokspace/brok/blob/main/docs/getting-started.md',
+    skills: 'https://github.com/brokspace/brok/blob/main/docs/skills.md',
+    shards: 'https://github.com/brokspace/brok/blob/main/docs/shards.md',
+    repository: 'https://github.com/brokspace/ide',
+    issues: 'https://github.com/brokspace/ide/issues/new/choose',
+    discussions: 'https://github.com/brokspace/brok/discussions',
+};
 
 export function renderProductName(): React.ReactNode {
-    const variant = getBrandingVariant();
-    const suffix = variant !== 'stable' ? ` ${variant.charAt(0).toUpperCase() + variant.slice(1)}` : '';
-    return <h1>Eclipse Theia <span className="tide-branding-accent">IDE</span>{suffix}</h1>;
+    return <h1 className='bk-product-name'>Brokspace <span className='bk-accent'>IDE</span></h1>;
 }
 
-export const DOWNLOAD_URL = 'https://theia-ide.org/#theiaidedownload';
-
-function BrowserLink(props: ExternalBrowserLinkProps): React.JSX.Element {
-    return <a
-        role={'button'}
-        tabIndex={0}
-        href={props.url}
-        target='_blank'
-    >
-        {props.text}
-    </a>;
+function Link(props: { text: string; url: string }): React.JSX.Element {
+    return <a role='button' tabIndex={0} href={props.url} target='_blank' rel='noreferrer'>{props.text}</a>;
 }
 
-/*
- * The sections below are shared by the welcome page and the About dialog, so that both describe the product
- * in the same words. Keep them to a sentence or two each: the welcome page has to stay scannable.
- */
-
-export function renderWhatIs(windowService: WindowService): React.ReactNode {
+function Section(props: { icon: string; title: string; children: React.ReactNode }): React.JSX.Element {
     return <div className='gs-section'>
-        <h3 className='gs-section-header'>
-            <i className={codicon('info')}></i>
-            What is this?
-        </h3>
-        <div>
-            The Eclipse Theia IDE is a modern and open IDE for cloud and desktop, built on
-            the <BrowserLink text="Theia platform" url="https://theia-ide.org" windowService={windowService} />.
-        </div>
-        <div>
-            You can get it as a <BrowserLink text="desktop application" url={DOWNLOAD_URL} windowService={windowService} /> or <BrowserLink
-                text="try the latest version online" url="https://try.theia-cloud.io/" windowService={windowService} />. The online version is limited to
-            30 minutes per session and hosted on <BrowserLink text="Theia Cloud" url="https://theia-cloud.io/" windowService={windowService} />.
-        </div>
+        <h3 className='gs-section-header'><i className={codicon(props.icon)}></i>{props.title}</h3>
+        {props.children}
     </div>;
 }
 
-export function renderExtendingCustomizing(windowService: WindowService): React.ReactNode {
-    return <div className='gs-section'>
-        <h3 className='gs-section-header'>
-            <i className={codicon('extensions')}></i>
-            Extending &amp; Customizing
-        </h3>
-        <div>
-            You can extend the IDE at runtime by installing VS Code extensions from
-            the <BrowserLink text="Open VSX registry" url="https://open-vsx.org/" windowService={windowService} />, an open marketplace. Open the Extensions
-            view to browse them.
-        </div>
-        <div>
-            The IDE is built on the flexible Theia platform, so it can also serve as
-            a <span className='gs-text-bold'>template</span> for your own tools and IDEs. See
-            the <BrowserLink text="documentation" url="https://theia-ide.org/docs/composing_applications/" windowService={windowService} /> to get started.
-        </div>
-    </div>;
-}
-
-export function renderCollaboration(windowService: WindowService): React.ReactNode {
-    return <div className='gs-section'>
-        <h3 className='gs-section-header'>
-            <i className={codicon('live-share')}></i>
-            Collaboration
-        </h3>
-        <div>
-            Share your workspace with others and work together in real time by clicking <i>Collaborate</i> in the status bar. The feature is powered
-            by <BrowserLink text="Open Collaboration Tools" url="https://www.open-collab.tools/" windowService={windowService} /> and uses their public
-            server infrastructure.
-        </div>
-    </div>;
-}
-
-export function renderSupport(windowService: WindowService): React.ReactNode {
-    return <div className='gs-section'>
-        <h3 className='gs-section-header'>
-            <i className={codicon('organization')}></i>
-            Professional Support
-        </h3>
-        <div>
-            Professional support, implementation services, consulting and training for the Theia IDE and for other tools based on Eclipse Theia are available
-            from selected companies. They are listed on
-            the <BrowserLink text="Theia support page" url="https://theia-ide.org/support/" windowService={windowService} />.
-        </div>
-    </div>;
-}
-
-export function renderCommunity(windowService: WindowService): React.ReactNode {
-    return <div className='gs-section'>
-        <h3 className='gs-section-header'>
-            <i className={codicon('comment-discussion')}></i>
-            Community
-        </h3>
-        <div>
-            The features of the Theia IDE come from Theia and the included extensions, while this project packages them into a product and its installers. So
-            please report a bug in a feature to the <BrowserLink text="Theia project"
-                url="https://github.com/eclipse-theia/theia/issues/new/choose" windowService={windowService} />, and anything wrong with the packaging or the
-            installers to the <BrowserLink text="Theia IDE project" url="https://github.com/eclipse-theia/theia-ide/issues/new/choose"
-                windowService={windowService} />.
-        </div>
-        <div>
-            The <BrowserLink text="source code" url="https://github.com/eclipse-theia/theia-ide" windowService={windowService} /> of the Theia IDE is available
-            on GitHub.
-        </div>
-    </div>;
-}
-
-export interface BrandingProps {
-    windowService: WindowService;
-}
-
-/**
- * Renders nothing outside of the desktop application: the updater and its `updates.*` preferences are
- * contributed by `theia-ide-updater-ext`, which is part of the Electron builds only.
- */
-export function renderUpdates(props: BrandingProps): React.ReactNode {
-    if (!environment.electron.is()) {
-        return undefined;
-    }
-    return <div className='gs-section'>
-        <h3 className='gs-section-header'>
-            <i className={codicon('cloud-download')}></i>
-            Updates
-        </h3>
-        <div>
-            You can update the Theia IDE directly in this application from Help {'>'} Check for Updates… It also checks for updates automatically
-            after each launch.
-        </div>
-        <div>
-            You can also download the most recent version from
-            the <BrowserLink text="download page" url={DOWNLOAD_URL} windowService={props.windowService} />.
-        </div>
-    </div>;
-}
-
-/**
- * The product description as shown by both the welcome page and the About dialog. Sharing the whole list
- * rather than only the individual sections keeps the two from drifting apart as sections come and go.
- */
-export function renderBrandingSections(props: BrandingProps): React.ReactNode {
-    const row = (content: React.ReactNode) => <div className='flex-grid'><div className='col'>{content}</div></div>;
-    const updates = renderUpdates(props);
-    return <React.Fragment>
-        {row(renderWhatIs(props.windowService))}
-        {row(renderExtendingCustomizing(props.windowService))}
-        {row(renderCollaboration(props.windowService))}
-        {row(renderSupport(props.windowService))}
-        {row(renderCommunity(props.windowService))}
-        {updates && row(updates)}
-    </React.Fragment>;
+/** The right-hand column of the welcome page and the about dialog. */
+export function renderBrandingSections(): React.ReactNode {
+    return <>
+        <Section icon='lock' title='Local first'>
+            <div>
+                Your code is indexed on this machine and answers come from your own LLM (Ollama, LM Studio, or a hosted
+                model you choose in <code>.brokspace/brok.yml</code>). Nothing leaves your machine unless you say so.
+            </div>
+        </Section>
+        <Section icon='search' title='Search and ask'>
+            <div>
+                The Brokspace view finds code by meaning or by name across every repository in the folder. The Brokspace
+                agent in the chat answers with the sources it used, reviews your changes (<code>/review</code>) and runs
+                skills (<code>/skill</code>).
+            </div>
+        </Section>
+        <Section icon='extensions' title='Skills and shards'>
+            <div>
+                Skills are reusable workflows for AI; shards are small programs that react to your workspace.
+                Start with <Link text='skills' url={BRAND.skills} /> and <Link text='shards' url={BRAND.shards} />.
+            </div>
+        </Section>
+        <Section icon='comment-discussion' title='Community'>
+            <div>
+                Brokspace is open source. Questions go to <Link text='Discussions' url={BRAND.discussions} />, problems with the
+                IDE to <Link text='its issue tracker' url={BRAND.issues} />. Built on <Link text='Eclipse Theia' url='https://theia-ide.org' />.
+            </div>
+        </Section>
+    </>;
 }

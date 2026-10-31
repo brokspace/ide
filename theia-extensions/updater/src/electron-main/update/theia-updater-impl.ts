@@ -14,22 +14,12 @@ import * as path from 'path';
 import { ElectronMainApplication, ElectronMainApplicationContribution } from '@theia/core/lib/electron-main/electron-main-application';
 import { TheiaUpdater, TheiaUpdaterClient, UpdaterSettings } from '../../common/updater/theia-updater';
 import { injectable } from '@theia/core/shared/inversify';
-import { isOSX, isWindows } from '@theia/core';
 import { CancellationToken } from 'builder-util-runtime';
 
-const STABLE_CHANNEL_WINDOWS = 'https://download.eclipse.org/theia/ide/version/windows';
-const STABLE_CHANNEL_MACOS = 'https://download.eclipse.org/theia/ide/latest/macos';
-const STABLE_CHANNEL_MACOS_ARM = 'https://download.eclipse.org/theia/ide/latest/macos-arm';
-const STABLE_CHANNEL_LINUX = 'https://download.eclipse.org/theia/ide/latest/linux';
-
-const PREVIEW_CHANNEL_WINDOWS = 'https://download.eclipse.org/theia/ide-preview/version/windows';
-const PREVIEW_CHANNEL_MACOS = 'https://download.eclipse.org/theia/ide-preview/latest/macos';
-const PREVIEW_CHANNEL_MACOS_ARM = 'https://download.eclipse.org/theia/ide-preview/latest/macos-arm';
-const PREVIEW_CHANNEL_LINUX = 'https://download.eclipse.org/theia/ide-preview/latest/linux';
-
-// Next updates are currently only available for Linux.
-// The feed is served from GitHub Release assets (rolling "next" tag).
-const NEXT_CHANNEL_LINUX = 'https://github.com/eclipse-theia/theia-ide/releases/download/next';
+// Brokspace IDE releases are GitHub Releases: each one carries the
+// electron-builder update metadata (latest.yml, latest-mac.yml,
+// latest-linux.yml), so "latest/download" always serves the newest feed.
+const RELEASES_FEED = 'https://github.com/brokspace/ide/releases/latest/download';
 
 const { autoUpdater } = require('electron-updater');
 
@@ -175,24 +165,10 @@ export class TheiaUpdaterImpl implements TheiaUpdater, ElectronMainApplicationCo
         }
     }
 
-    protected getFeedURL(channel: string): string {
-        if (isWindows) {
-            const curVersion = autoUpdater.currentVersion.toString();
-            // Next not yet available on Windows, fall back to stable
-            return (channel === 'preview') ? PREVIEW_CHANNEL_WINDOWS.replace('version', curVersion) : STABLE_CHANNEL_WINDOWS.replace('version', curVersion);
-        } else if (isOSX) {
-            // Next not yet available on macOS, fall back to stable
-            if (process.arch === 'arm64') {
-                return (channel === 'preview') ? PREVIEW_CHANNEL_MACOS_ARM : STABLE_CHANNEL_MACOS_ARM;
-            } else {
-                return (channel === 'preview') ? PREVIEW_CHANNEL_MACOS : STABLE_CHANNEL_MACOS;
-            }
-        } else {
-            if (channel === 'next') {
-                return NEXT_CHANNEL_LINUX;
-            }
-            return (channel === 'preview') ? PREVIEW_CHANNEL_LINUX : STABLE_CHANNEL_LINUX;
-        }
+    protected getFeedURL(_channel: string): string {
+        // One feed for every platform and channel for now; preview builds are
+        // published as GitHub pre-releases, which "latest" skips.
+        return RELEASES_FEED;
     }
 
     disconnectClient(client: TheiaUpdaterClient): void {

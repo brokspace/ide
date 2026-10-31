@@ -1,176 +1,207 @@
-/********************************************************************************
- * Copyright (C) 2020 EclipseSource and others.
- *
- * This program and the accompanying materials are made available under the
- * terms of the MIT License, which is available in the project root.
- *
- * SPDX-License-Identifier: MIT
- ********************************************************************************/
+/* Brokspace IDE branding: welcome page and about dialog. Brand colors are
+   fixed; everything else follows the active theme. */
 
 :root {
-    --theia-branding-logo: url(../icons/TheiaIDE.png);
-    --theia-branding-icon: url(../icons/512-512.png);
-    --theia-branding-accent: #5088e7;
+    --bk-forge: #FF8A3D;
+    --bk-forge-700: #A8410F;
+    --bk-icon: url(../icons/app-icon.png);
+    --bk-mark: url(../icons/mark-on-dark.svg);
+    --bk-mark-light: url(../icons/mark.svg);
 }
 
-body[data-theia-branding="next"] {
-    --theia-branding-logo: url(../icons/TheiaIDE-next.png);
-    --theia-branding-icon: url(../icons/512-512-next.png);
-    /* The exact purple of the `next` application icon, so the product name matches it. */
-    --theia-branding-accent: #8b5cf6;
+/* Light themes: the mark with the dark lower ribbon. */
+body.theia-light {
+    --bk-mark: var(--bk-mark-light);
 }
 
-.theia-icon {
-    background-image: var(--theia-branding-icon);
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: contain;
+.bk-accent {
+    color: var(--bk-forge);
+    font-weight: 600;
 }
 
-/*
- * The application icon on the welcome tab, so the tab is recognizable the way a favicon makes a page.
- * Tab icons in the main area are drawn as a mask tinted with `--theia-icon-foreground`, which would flatten
- * the brand color, so the icon is put back as a plain background image. Core does the same for file icons,
- * hence the selectors have to be as specific as the rules in its `tabs.css`.
- */
-.lm-TabBar.theia-app-centers .lm-TabBar-tabIcon.tide-welcome-tab-icon,
-.lm-TabBar-tab.lm-mod-drag-image .lm-TabBar-tabIcon.tide-welcome-tab-icon {
-    /*
-     * `content-box` keeps the icon out of the `padding-right` that core gives every tab icon as the gap
-     * before the label. Without it the background fills the padding box and eats into that gap.
-     */
-    background: var(--theia-branding-icon) center/contain no-repeat content-box;
+body.theia-light .bk-accent {
+    color: var(--bk-forge-700);
+}
+
+/* The app icon on the welcome tab (kept in color, not masked). */
+.lm-TabBar.theia-app-centers .lm-TabBar-tabIcon.bk-welcome-tab-icon,
+.lm-TabBar-tab.lm-mod-drag-image .lm-TabBar-tabIcon.bk-welcome-tab-icon {
+    background: var(--bk-icon) center/contain no-repeat content-box;
     -webkit-mask: none;
     mask: none;
     min-height: var(--theia-icon-size);
 }
 
-.tide-branding-accent {
-    color: var(--theia-branding-accent);
-    text-transform: capitalize;
-    font-weight: 600;
+/* ------------------------------------------------------------- home */
+
+.bk-home .gs-content-container {
+    max-width: 960px;
 }
 
-.gs-text-bold {
-    font-weight: 600;
+.bk-hero {
+    margin: 24px 0 32px;
 }
 
-.gs-text-underline {
-    text-decoration: underline;
-}
-
-/*
- * The welcome page lays out its sections in two columns: what you can do on the left, what the IDE is on
- * the right. `auto-fit` folds them into a single column on a narrow editor without needing a media query.
- */
-.tide-welcome-grid {
-    display: grid;
-    /*
-     * `min()` keeps the track from staying at 320px once the widget gets narrower than that: the welcome
-     * widget suppresses horizontal scrolling, so anything wider than it would be clipped rather than
-     * reachable.
-     */
-    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-    gap: calc(var(--theia-ui-padding) * 4);
-    align-items: start;
-}
-
-.tide-welcome-column {
+.bk-hero-brand {
     display: flex;
-    flex-direction: column;
-    gap: calc(var(--theia-ui-padding) * 3);
-    /* Keeps the recent workspace paths ellipsizing instead of widening the column. */
-    min-width: 0;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 28px;
 }
 
-/*
- * The walkthroughs get a row of their own above the two columns, so that the onboarding is the first thing
- * offered. Without a pending walkthrough the section renders nothing, and the row must not keep its margin.
- */
-.tide-welcome-walkthroughs {
-    margin-bottom: calc(var(--theia-ui-padding) * 4);
+.bk-hero-mark {
+    width: 46px;
+    height: 80px;
+    flex: none;
+    background: var(--bk-mark) no-repeat center / contain;
 }
 
-.tide-welcome-walkthroughs:empty {
+.bk-product-name {
+    margin: 0;
+    font-size: 2.2em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.bk-tagline {
+    margin: 4px 0 0;
+    color: var(--theia-descriptionForeground);
+    font-size: 1.1em;
+}
+
+.bk-version {
+    margin-left: 8px;
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+.bk-prompt {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 12px 12px 12px 16px;
+    border-radius: 14px;
+    background: var(--theia-input-background);
+    border: 1px solid var(--theia-input-border, var(--theia-widget-border, transparent));
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.bk-prompt:focus-within {
+    border-color: color-mix(in srgb, var(--bk-forge) 70%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--bk-forge) 18%, transparent), 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.bk-prompt-input {
+    flex: 1;
+    resize: none;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--theia-input-foreground);
+    font-family: var(--theia-ui-font-family);
+    font-size: 1.05em;
+    line-height: 1.5;
+}
+
+.bk-prompt-input::placeholder {
+    color: var(--theia-input-placeholderForeground);
+}
+
+.bk-prompt-send {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    background: var(--bk-forge);
+    color: #0B0E12;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bk-prompt-send:hover {
+    filter: brightness(1.08);
+}
+
+.bk-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.bk-chip {
+    border-radius: 999px;
+    padding: 5px 12px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--theia-descriptionForeground);
+    border: 1px solid var(--theia-widget-border, var(--theia-panel-border, transparent));
+    font-family: var(--theia-ui-font-family);
+}
+
+.bk-chip:hover {
+    color: var(--theia-foreground);
+    border-color: color-mix(in srgb, var(--bk-forge) 60%, transparent);
+}
+
+.bk-home-walkthroughs:empty {
     display: none;
 }
 
-/*
- * Across the row rather than in the single column the cards form in the narrow side column of the framework
- * welcome page. They keep the minimum and the measure of a column, so that a lone card stays the size of a
- * card instead of stretching over the whole page.
- */
-.tide-welcome-walkthroughs .gs-walkthrough-cards {
-    flex-direction: row;
-    flex-wrap: wrap;
-    max-width: none;
+.bk-home-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-top: 8px;
 }
 
-.tide-welcome-walkthroughs .gs-walkthrough-card {
-    flex: 1 1 320px;
-    max-width: 420px;
-    /*
-     * The row decides how wide a card is, not its content: a flex item otherwise refuses to go below the
-     * width of its text, which makes a card with a longer title or description wider than the others.
-     */
-    min-width: 0;
-    /* A long unbreakable word would then reach out of the card rather than widen it. */
-    overflow-wrap: anywhere;
+@media (max-width: 760px) {
+    .bk-home-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
-.tide-welcome-header {
+.bk-home-column .gs-section {
+    margin-bottom: 20px;
+}
+
+.bk-home code,
+.bk-about code {
+    font-family: var(--theia-code-font-family);
+    font-size: 0.92em;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--theia-textCodeBlock-background, rgba(127, 127, 127, 0.15));
+}
+
+/* ------------------------------------------------------------- about */
+
+.bk-about {
+    min-width: 460px;
+}
+
+.bk-about-head {
     display: flex;
+    gap: 20px;
     align-items: center;
-    flex-wrap: wrap;
-    gap: calc(var(--theia-ui-padding) * 3);
 }
 
-.tide-welcome-header h1 {
-    margin: 0;
+.bk-about-logo {
+    width: 72px;
+    height: 72px;
+    flex: none;
+    background: var(--bk-icon) no-repeat center / contain;
 }
 
-.tide-welcome-header .gs-sub-header {
-    margin: calc(var(--theia-ui-padding) / 2) 0 0 0;
+.bk-about .bk-product-name {
+    font-size: 1.6em;
 }
 
-/*
- * The header shows the square application icon rather than the wordmark logo. The icon is the same shape in
- * every branding variant, so one box fits all of them, and being transparent it sits on a light and a dark
- * theme alike. `.theia-icon` above supplies the image and swaps it per variant.
- */
-.tide-welcome-header .tide-welcome-icon {
-    flex: 0 0 auto;
-    width: 64px;
-    height: 64px;
-    /* `.theia-icon` in core is sized and spaced for the browser menu bar logo. */
-    margin: 0;
-}
-
-.ad-logo {
-    background-image: var(--theia-branding-logo);
-    background-position: center center;
-    background-repeat: no-repeat;
-    background-size: contain;
-    width: 250px;
-    height: 118px;
-    padding: 20px;
-}
-
-.ad-float {
-    float: right;
-}
-
-.ad-container {
-    padding: 20px;
-    width: 1150px;
-    height: 700;
-}
-
-ul.theia-aboutExtensions {
-    height: 450px;
-    overflow: hidden;
-    overflow-y: scroll;
-    list-style-type: none;
-    padding: 0;
-    margin-left: 10px;
+.bk-about .gs-sub-header {
+    margin: 2px 0;
 }
