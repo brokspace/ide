@@ -82,7 +82,8 @@ yarn electron package         # installers in applications/electron/dist
 2. Tag `vX.Y.Z` and push it. The Release workflow builds every platform,
    uploads installers with `.sha256` files and update metadata, publishes the
    release, then updates the Homebrew tap and the APT repository when their
-   secrets are set (see `.github/workflows/release.yml`).
+   secrets are set. One-time setup, step by step:
+   [docs/maintainers/package-managers.md](docs/maintainers/package-managers.md).
 
 ## Credits
 
