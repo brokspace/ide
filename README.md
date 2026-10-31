@@ -78,8 +78,10 @@ yarn electron package         # installers in applications/electron/dist
 ## Release
 
 1. Bump `version` in the root and workspace `package.json` files and
-   `lerna.json`, update the changelog, merge.
-2. Tag `vX.Y.Z` and push it. The Release workflow builds every platform,
+   `lerna.json` and update the changelog, in a PR to `staging`. Then merge
+   the release PR ("release: promote staging to main").
+2. Tag `vX.Y.Z` on `main` and push it
+   (`git fetch origin && git tag vX.Y.Z origin/main && git push origin vX.Y.Z`). The Release workflow builds every platform,
    uploads installers with `.sha256` files and update metadata, publishes the
    release, then updates the Homebrew tap and the APT repository when their
    secrets are set. One-time setup, step by step:
