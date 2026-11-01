@@ -19,6 +19,7 @@ import {
     Progress
 } from '@theia/core/lib/common';
 import { PreferenceScope, PreferenceService } from '@theia/core/lib/common';
+import { nls } from '@theia/core/lib/common/nls';
 import { TheiaUpdater, TheiaUpdaterClient, UpdaterError, UpdateInfo, UpdateAvailabilityInfo, UpdaterSettings } from '../../common/updater/theia-updater';
 import { inject, injectable, postConstruct } from '@theia/core/shared/inversify';
 import { CommonMenus, OpenerService } from '@theia/core/lib/browser';
@@ -28,19 +29,17 @@ import { URI as VSCodeURI } from 'vscode-uri';
 
 export namespace TheiaUpdaterCommands {
 
-    const category = 'Theia Electron Updater';
-
-    export const CHECK_FOR_UPDATES: Command = {
+    export const CHECK_FOR_UPDATES: Command = Command.toLocalizedCommand({
         id: 'electron-theia:check-for-updates',
-        label: 'Check for Updates...',
-        category
-    };
+        label: 'Check for Updates…',
+        category: 'Brokspace IDE'
+    }, 'brokspace/updater/checkForUpdates');
 
-    export const RESTART_TO_UPDATE: Command = {
+    export const RESTART_TO_UPDATE: Command = Command.toLocalizedCommand({
         id: 'electron-theia:restart-to-update',
         label: 'Restart to Update',
-        category
-    };
+        category: 'Brokspace IDE'
+    }, 'brokspace/updater/restartToUpdate');
 
 }
 
@@ -203,29 +202,32 @@ export class TheiaUpdaterFrontendContribution implements CommandContribution, Me
 
     protected async handleDownloadUpdate(updateInfo?: UpdateInfo): Promise<void> {
         const message = updateInfo
-            ? `Update to version ${updateInfo.version} found, do you want to update?`
-            : 'Updates found, do you want to update?';
-        const actions = ['Not now', 'Yes'];
+            ? nls.localize('brokspace/updater/found', 'Version {0} is available. Update now?', updateInfo.version)
+            : nls.localize('brokspace/updater/foundAny', 'An update is available. Update now?');
+        const notNow = nls.localize('brokspace/updater/notNow', 'Not now');
+        const yes = nls.localize('brokspace/updater/yes', 'Yes');
+        const never = nls.localize('brokspace/updater/never', 'Never');
+        const actions = [notNow, yes];
         const checkForUpdates = this.preferenceService.get<boolean>('updates.checkForUpdates', true);
         if (checkForUpdates) {
-            actions.push('Never');
+            actions.push(never);
         }
         const answer = await this.messageService.info(message, ...actions);
-        if (answer === 'Never') {
+        if (answer === never) {
             this.preferenceService.set('updates.checkForUpdates', false, PreferenceScope.User);
             return;
         }
-        if (answer === 'Yes') {
+        if (answer === yes) {
             this.stopProgress();
             this.progress = await this.messageService.showProgress({
-                text: 'Brokspace IDE Update',
+                text: nls.localize('brokspace/updater/progressTitle', 'Brokspace IDE update'),
                 options: { cancelable: true }
             }, () => this.updater.cancel());
             let dots = 0;
             this.intervalId = setInterval(() => {
                 if (this.progress !== undefined) {
                     dots = (dots + 1) % 4;
-                    this.progress.report({ message: 'Downloading' + '.'.repeat(dots) });
+                    this.progress.report({ message: nls.localize('brokspace/updater/downloading', 'Downloading') + '.'.repeat(dots) });
                 }
             }, 1000);
             this.updater.downloadUpdate();
@@ -233,7 +235,7 @@ export class TheiaUpdaterFrontendContribution implements CommandContribution, Me
     }
 
     protected async handleNoUpdate(): Promise<void> {
-        this.messageService.info('Already using the latest version');
+        this.messageService.info(nls.localize('brokspace/updater/latest', 'You are using the latest version.'));
     }
 
     protected async handleUpdatesAvailable(): Promise<void> {
@@ -242,10 +244,11 @@ export class TheiaUpdaterFrontendContribution implements CommandContribution, Me
             this.stopProgress();
         }
         const message = this.currentUpdateInfo
-            ? `An update to version ${this.currentUpdateInfo.version} has been downloaded and will be automatically installed on exit. Do you want to restart now?`
-            : 'An update has been downloaded and will be automatically installed on exit. Do you want to restart now?';
-        const answer = await this.messageService.info(message, 'No', 'Yes');
-        if (answer === 'Yes') {
+            ? nls.localize('brokspace/updater/downloaded', 'Version {0} has been downloaded and installs when you quit. Restart now?', this.currentUpdateInfo.version)
+            : nls.localize('brokspace/updater/downloadedAny', 'An update has been downloaded and installs when you quit. Restart now?');
+        const yes = nls.localize('brokspace/updater/yes', 'Yes');
+        const answer = await this.messageService.info(message, nls.localize('brokspace/updater/no', 'No'), yes);
+        if (answer === yes) {
             this.updater.onRestartToUpdateRequested();
         }
     }
@@ -253,7 +256,7 @@ export class TheiaUpdaterFrontendContribution implements CommandContribution, Me
     protected async handleError(error: UpdaterError): Promise<void> {
         this.stopProgress();
         if (error.errorLogPath) {
-            const viewLogAction = 'View Error Log';
+            const viewLogAction = nls.localize('brokspace/updater/viewLog', 'View Error Log');
             const answer = await this.messageService.error(error.message, viewLogAction);
             if (answer === viewLogAction) {
                 const uri = new URI(VSCodeURI.file(error.errorLogPath));

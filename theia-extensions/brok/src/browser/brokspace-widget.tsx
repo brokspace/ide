@@ -6,49 +6,75 @@
 
 import * as React from '@theia/core/shared/react';
 import { CommandService } from '@theia/core/lib/common/command';
-import { codicon } from '@theia/core/lib/browser/widgets/widget';
+import { nls } from '@theia/core/lib/common/nls';
+import { codicon, Message } from '@theia/core/lib/browser/widgets/widget';
 import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
-import { Message } from '@theia/core/lib/browser/widgets/widget';
 import { OpenerService, open } from '@theia/core/lib/browser/opener-service';
 import { inject, injectable, postConstruct } from '@theia/core/shared/inversify';
-import { BrokService, SearchHit, SkillInfo } from '../common/brok-protocol';
+import { BrokService, SearchHit, ShardDetails, ShardInfo, SkillInfo } from '../common/brok-protocol';
 import { BrokspaceCommands } from './brokspace-commands';
 import { BrokspaceModel, BrokspaceState } from './brokspace-model';
 
-/** The Brokspace view in the left sidebar. */
-@injectable()
-export class BrokspaceWidget extends ReactWidget {
+type Ready = Extract<BrokspaceState, { kind: 'ready' }>;
 
-    static readonly ID = 'brokspace-view';
-    static readonly LABEL = 'Brokspace';
+/** A part of the Brokspace view container: re-renders when brok's status changes. */
+@injectable()
+abstract class BrokspacePart extends ReactWidget {
 
     @inject(BrokspaceModel) protected readonly model: BrokspaceModel;
     @inject(BrokService) protected readonly service: BrokService;
     @inject(CommandService) protected readonly commands: CommandService;
+
+    @postConstruct()
+    protected init(): void {
+        this.addClass('bk-part');
+        this.toDispose.push(this.model.onDidChange(state => this.onStateChange(state)));
+        this.update();
+    }
+
+    protected onStateChange(_state: BrokspaceState): void {
+        this.update();
+    }
+
+    protected run(command: string, ...args: unknown[]): void {
+        this.commands.executeCommand(command, ...args);
+    }
+
+    protected iconButton(icon: string, title: string, onClick: () => void): React.ReactNode {
+        return <button className={`bk-icon-button ${codicon(icon)}`} title={title} aria-label={title}
+            onClick={e => { e.stopPropagation(); onClick(); }} />;
+    }
+
+    protected empty(text: string, actions: { label: string; command: string; primary?: boolean }[] = []): React.ReactNode {
+        return <div className='bk-empty'>
+            <p>{text}</p>
+            {actions.length > 0 && <div className='bk-empty-actions'>
+                {actions.map(action => <button key={action.command} className={`theia-button ${action.primary ? 'main' : 'secondary'}`}
+                    onClick={() => this.run(action.command)}>{action.label}</button>)}
+            </div>}
+        </div>;
+    }
+}
+
+/** Status, search and the agent's quick actions; guides setup until brok is ready. */
+@injectable()
+export class BrokspaceOverviewWidget extends BrokspacePart {
+
+    static readonly ID = 'brokspace-overview';
+
     @inject(OpenerService) protected readonly opener: OpenerService;
 
     protected query = '';
     protected hits: SearchHit[] = [];
     protected searching = false;
-    protected searchError: string | undefined;
-    protected skills: SkillInfo[] = [];
-    protected searchInput: HTMLInputElement | null = null;
+    protected searchMessage: string | undefined;
+    protected searchInput: HTMLInputElement | undefined;
 
     @postConstruct()
-    protected init(): void {
-        this.id = BrokspaceWidget.ID;
-        this.title.label = BrokspaceWidget.LABEL;
-        this.title.caption = 'Brokspace: search, agents, skills and shards';
-        this.title.iconClass = 'brokspace-view-icon';
-        this.title.closable = true;
-        this.addClass('brokspace-widget');
-        this.toDispose.push(this.model.onDidChange(state => {
-            if (state.kind === 'ready' && !this.skills.length) {
-                this.loadSkills();
-            }
-            this.update();
-        }));
-        this.update();
+    protected override init(): void {
+        this.id = BrokspaceOverviewWidget.ID;
+        this.title.label = nls.localize('brokspace/view/overview', 'Overview');
+        super.init();
     }
 
     protected override onActivateRequest(msg: Message): void {
@@ -62,191 +88,116 @@ export class BrokspaceWidget extends ReactWidget {
         this.searchInput?.select();
     }
 
-    protected async loadSkills(): Promise<void> {
-        const root = this.model.root;
-        if (root) {
-            try {
-                this.skills = await this.service.skills(root);
-                this.update();
-            } catch {
-                // Skills are optional in the view.
-            }
-        }
-    }
-
     protected render(): React.ReactNode {
         const state = this.model.state;
-        return <div className='bk-view'>
-            {this.renderHeader(state)}
-            {this.renderBody(state)}
-        </div>;
-    }
-
-    protected renderHeader(state: BrokspaceState): React.ReactNode {
-        const running = state.kind === 'ready' && state.status.daemon?.running;
-        const pill = state.kind === 'ready'
-            ? <span className={`bk-pill ${running ? 'bk-pill-on' : ''}`}>{running ? 'Running' : 'Stopped'}</span>
-            : undefined;
-        return <div className='bk-header'>
-            <div className='bk-mark' />
-            <div className='bk-title'>Brokspace</div>
-            {pill}
-            <button className={`bk-icon-button ${codicon('refresh')}`} title='Refresh' onClick={() => this.model.refresh()} />
-        </div>;
-    }
-
-    protected renderBody(state: BrokspaceState): React.ReactNode {
         switch (state.kind) {
             case 'loading':
-                return <div className='bk-empty'>Loading…</div>;
+                return <div className='bk-empty'><p>{nls.localize('brokspace/view/loading', 'Loading…')}</p></div>;
             case 'no-folder':
-                return this.card('Open a folder', 'Brokspace works on the folder you open: one repository or a folder of several.',
-                    'Open Folder…', () => this.commands.executeCommand('workspace:openFolder'));
+                return this.setupCard('folder-opened', nls.localize('brokspace/view/noFolderTitle', 'Open a folder'),
+                    nls.localize('brokspace/view/noFolderText', 'Brokspace works on the folder you open: one repository or a folder of several.'),
+                    nls.localize('brokspace/view/openFolder', 'Open Folder…'), 'workspace:openFolder');
             case 'no-brok':
-                return this.card('brok was not found', `The IDE could not run ${state.info.path}. ${state.info.error ?? ''}`,
-                    'Install brok', () => this.commands.executeCommand(BrokspaceCommands.INSTALL_HELP.id));
+                return this.setupCard('warning', nls.localize('brokspace/view/noBrokTitle', 'brok was not found'),
+                    nls.localize('brokspace/view/noBrokText', 'The IDE could not run {0}. {1}', state.info.path, state.info.error ?? ''),
+                    nls.localize('brokspace/view/installBrok', 'Install brok'), BrokspaceCommands.INSTALL_HELP.id);
             case 'outdated':
-                return this.card(`brok ${state.info.version} is too old`, 'This IDE needs brok 0.2.4 or newer. Run "brok upgrade" in a terminal.',
-                    'Open Terminal', () => this.commands.executeCommand('terminal:new'));
+                return this.setupCard('warning', nls.localize('brokspace/view/outdatedTitle', 'brok {0} is too old', state.info.version ?? ''),
+                    nls.localize('brokspace/view/outdatedText', 'This IDE needs brok 0.2.4 or newer. Run "brok upgrade" in a terminal.'),
+                    nls.localize('brokspace/view/openTerminal', 'Open Terminal'), 'terminal:new');
             case 'not-initialized':
-                return this.card('Set up Brokspace here', 'Indexes this folder for search, finds your local LLM and connects coding agents. '
-                    + 'Downloads the search model once (about 140 MB).', 'Set Up Workspace', () => this.commands.executeCommand(BrokspaceCommands.SETUP.id));
+                return this.setupCard('rocket', nls.localize('brokspace/view/setupTitle', 'Set up Brokspace here'),
+                    nls.localize('brokspace/view/setupText', 'Indexes this folder for search, finds your local LLM and connects coding agents. '
+                        + 'Downloads the search model once (about 140 MB).'),
+                    nls.localize('brokspace/view/setupAction', 'Set Up Workspace'), BrokspaceCommands.SETUP.id);
             case 'error':
-                return this.card('Something went wrong', state.message, 'Run Doctor', () => this.commands.executeCommand(BrokspaceCommands.DOCTOR.id));
+                return this.setupCard('error', nls.localize('brokspace/view/errorTitle', 'Something went wrong'), state.message,
+                    nls.localize('brokspace/view/runDoctor', 'Run Doctor'), BrokspaceCommands.DOCTOR.id);
             case 'ready':
-                return <>
-                    {this.renderWorkspace(state)}
+                return <div className='bk-overview'>
+                    {this.renderFacts(state)}
                     {this.renderSearch()}
                     {this.renderActions()}
-                    {this.renderSkills()}
-                    {this.renderShards(state)}
-                </>;
+                </div>;
         }
     }
 
-    protected card(title: string, text: string, action: string, run: () => void): React.ReactNode {
+    protected setupCard(icon: string, title: string, text: string, action: string, command: string): React.ReactNode {
         return <div className='bk-card'>
+            <span className={`bk-card-icon ${codicon(icon)}`} />
             <div className='bk-card-title'>{title}</div>
             <div className='bk-card-text'>{text}</div>
-            <button className='theia-button main bk-card-button' onClick={run}>{action}</button>
+            <button className='theia-button main' onClick={() => this.run(command)}>{action}</button>
         </div>;
     }
 
-    protected renderWorkspace(state: Extract<BrokspaceState, { kind: 'ready' }>): React.ReactNode {
+    protected renderFacts(state: Ready): React.ReactNode {
         const { status } = state;
         const running = !!status.daemon?.running;
         const files = (status.index ?? []).reduce((sum, p) => sum + p.files, 0);
-        const chunks = (status.index ?? []).reduce((sum, p) => sum + p.chunks, 0);
         const hybrid = (status.index ?? []).some(p => p.semantic);
-        const llm = status.llm?.model ? `${status.llm.model} · ${status.llm.provider}` : status.llm?.provider ?? 'none';
-        return <section className='bk-section'>
-            <h3 className='bk-section-title'>Workspace</h3>
-            <dl className='bk-facts'>
-                <dt>Service</dt>
-                <dd>
-                    <span className={`bk-dot ${running ? 'bk-dot-on' : ''}`} />{running ? 'Running' : 'Stopped'}
-                    <button className='bk-link' onClick={() => this.commands.executeCommand(running ? BrokspaceCommands.STOP.id : BrokspaceCommands.START.id)}>
-                        {running ? 'Stop' : 'Start'}
-                    </button>
-                </dd>
-                <dt>Index</dt>
-                <dd>{files.toLocaleString()} files · {chunks.toLocaleString()} chunks · {hybrid ? 'hybrid' : 'text'}</dd>
-                <dt>Model</dt>
-                <dd title={status.llm?.base_url ?? ''}>{llm}</dd>
-                <dt>brok</dt>
-                <dd>{state.info.version}</dd>
-            </dl>
-        </section>;
+        const model = status.llm?.model ? `${status.llm.model} · ${status.llm.provider}` : undefined;
+        const mode = hybrid ? nls.localize('brokspace/view/hybrid', 'hybrid') : nls.localize('brokspace/view/text', 'text');
+        return <ul className='bk-facts'>
+            <li>
+                <span className={`bk-dot ${running ? 'bk-dot-on' : ''}`} />
+                <span className='bk-fact-text'>{running
+                    ? nls.localize('brokspace/view/running', 'Running')
+                    : nls.localize('brokspace/view/stopped', 'Stopped')}</span>
+                <button className='bk-link' onClick={() => this.run(running ? BrokspaceCommands.STOP.id : BrokspaceCommands.START.id)}>
+                    {running ? nls.localize('brokspace/view/stop', 'Stop') : nls.localize('brokspace/view/start', 'Start')}
+                </button>
+            </li>
+            <li title={status.llm?.base_url ?? ''}>
+                <span className={codicon('hubot')} />
+                <span className='bk-fact-text'>{model ?? nls.localize('brokspace/view/noModel', 'No LLM: local search only')}</span>
+            </li>
+            <li>
+                <span className={codicon('database')} />
+                <span className='bk-fact-text'>{nls.localize('brokspace/view/indexFacts', '{0} files · {1}', files.toLocaleString(), mode)}</span>
+            </li>
+        </ul>;
     }
 
     protected renderSearch(): React.ReactNode {
-        return <section className='bk-section'>
-            <h3 className='bk-section-title'>Search</h3>
+        return <div className='bk-search-block'>
             <form className='bk-search' onSubmit={e => { e.preventDefault(); this.search(); }}>
                 <span className={codicon('search')} />
                 <input
-                    ref={input => { this.searchInput = input; }}
+                    ref={input => { this.searchInput = input ?? undefined; }}
                     className='theia-input bk-search-input'
-                    placeholder='Find code by meaning or name'
+                    placeholder={nls.localize('brokspace/view/searchPlaceholder', 'Search by meaning')}
+                    aria-label={BrokspaceCommands.SEARCH.label}
                     spellCheck={false}
                     defaultValue={this.query}
                     onChange={e => { this.query = e.currentTarget.value; }}
                 />
             </form>
-            {this.searching && <div className='bk-muted'>Searching…</div>}
-            {this.searchError && <div className='bk-error'>{this.searchError}</div>}
-            <ul className='bk-hits'>
-                {this.hits.map(hit => <li key={`${hit.path}:${hit.start_line}`} className='bk-hit' onClick={() => this.openHit(hit)}
-                    title={hit.content}>
+            {this.searching && <div className='bk-muted'>{nls.localize('brokspace/view/searching', 'Searching…')}</div>}
+            {this.searchMessage && <div className='bk-muted'>{this.searchMessage}</div>}
+            {this.hits.length > 0 && <ul className='bk-hits'>
+                {this.hits.map(hit => <li key={`${hit.path}:${hit.start_line}`} className='bk-hit' tabIndex={0} title={hit.content}
+                    onClick={() => this.openHit(hit)} onKeyDown={e => e.key === 'Enter' && this.openHit(hit)}>
                     <div className='bk-hit-head'>
                         <span className='bk-hit-symbol'>{hit.symbol || hit.kind}</span>
-                        <span className='bk-hit-score'>{hit.score.toFixed(2)}</span>
+                        <span className='bk-hit-path'>{hit.path}:{hit.start_line}</span>
                     </div>
-                    <div className='bk-hit-path'>{hit.path}:{hit.start_line}</div>
                     <div className='bk-hit-snippet'>{firstLine(hit.content)}</div>
                 </li>)}
-            </ul>
-        </section>;
+            </ul>}
+        </div>;
     }
 
     protected renderActions(): React.ReactNode {
         const action = (icon: string, label: string, command: string) =>
-            <button className='bk-action' onClick={() => this.commands.executeCommand(command)}>
-                <span className={codicon(icon)} />{label}
+            <button className='bk-action' onClick={() => this.run(command)}>
+                <span className={codicon(icon)} /><span>{label}</span>
             </button>;
-        return <section className='bk-section'>
-            <h3 className='bk-section-title'>Agent</h3>
-            <div className='bk-actions'>
-                {action('comment-discussion', 'Ask Brokspace', BrokspaceCommands.ASK.id)}
-                {action('checklist', 'Review changes', BrokspaceCommands.REVIEW.id)}
-                {action('git-commit', 'Commit message', BrokspaceCommands.COMMIT_MESSAGE.id)}
-            </div>
-        </section>;
-    }
-
-    protected renderSkills(): React.ReactNode {
-        if (!this.skills.length) {
-            return undefined;
-        }
-        const group = (title: string, userInvoked: boolean) => {
-            const skills = this.skills.filter(skill => skill.user_invoked === userInvoked);
-            return skills.length ? <>
-                <div className='bk-subtitle'>{title}</div>
-                <ul className='bk-list'>
-                    {skills.map(skill => <li key={skill.name} className='bk-row' title={skill.description}>
-                        <span className='bk-row-name'>{skill.name}</span>
-                        <span className='bk-row-meta'>{skill.source}</span>
-                        <button className={`bk-icon-button ${codicon('play')}`} title={`Run ${skill.name}`}
-                            onClick={() => this.commands.executeCommand(BrokspaceCommands.RUN_SKILL.id, skill.name)} />
-                    </li>)}
-                </ul>
-            </> : undefined;
-        };
-        return <section className='bk-section'>
-            <h3 className='bk-section-title'>Skills</h3>
-            {group('Workflows', true)}
-            {group('Used by agents', false)}
-        </section>;
-    }
-
-    protected renderShards(state: Extract<BrokspaceState, { kind: 'ready' }>): React.ReactNode {
-        const shards = state.status.shards ?? [];
-        return <section className='bk-section'>
-            <h3 className='bk-section-title'>
-                Shards
-                <button className={`bk-icon-button ${codicon('add')}`} title='Install a shard'
-                    onClick={() => this.commands.executeCommand(BrokspaceCommands.INSTALL_SHARD.id)} />
-            </h3>
-            <ul className='bk-list'>
-                {shards.map(shard => <li key={shard.name} className='bk-row' title={shard.description}>
-                    <span className={`bk-dot ${shard.state === 'enabled' ? 'bk-dot-on' : ''}`} />
-                    <span className='bk-row-name'>{shard.name}</span>
-                    <span className='bk-row-meta'>{shard.version} · {shard.state}</span>
-                    {shard.source !== 'builtin' && <button className={`bk-icon-button ${codicon('trash')}`} title={`Remove ${shard.name}`}
-                        onClick={() => this.commands.executeCommand(BrokspaceCommands.REMOVE_SHARD.id, shard.name)} />}
-                </li>)}
-            </ul>
-        </section>;
+        return <div className='bk-actions'>
+            {action('comment-discussion', nls.localize('brokspace/view/ask', 'Ask'), BrokspaceCommands.ASK.id)}
+            {action('checklist', nls.localize('brokspace/view/review', 'Review'), BrokspaceCommands.REVIEW.id)}
+            {action('git-commit', nls.localize('brokspace/view/commit', 'Commit'), BrokspaceCommands.COMMIT_MESSAGE.id)}
+        </div>;
     }
 
     protected async search(): Promise<void> {
@@ -256,16 +207,16 @@ export class BrokspaceWidget extends ReactWidget {
             return;
         }
         this.searching = true;
-        this.searchError = undefined;
+        this.searchMessage = undefined;
         this.update();
         try {
             this.hits = await this.service.search(root, query, 20);
             if (!this.hits.length) {
-                this.searchError = 'No results. Try other words, or check that the index is up to date.';
+                this.searchMessage = nls.localize('brokspace/view/noResults', 'No results. Try other words, or check that the index is up to date.');
             }
         } catch (error) {
             this.hits = [];
-            this.searchError = error instanceof Error ? error.message : String(error);
+            this.searchMessage = error instanceof Error ? error.message : String(error);
         } finally {
             this.searching = false;
             this.update();
@@ -281,6 +232,212 @@ export class BrokspaceWidget extends ReactWidget {
         open(this.opener, root.resolve(hit.path), {
             selection: { start: { line, character: 0 }, end: { line: Math.max(line, hit.end_line - 1), character: 0 } },
         });
+    }
+}
+
+/** Installed shards: state, permissions and topics, install and remove. */
+@injectable()
+export class BrokspaceShardsWidget extends BrokspacePart {
+
+    static readonly ID = 'brokspace-shards';
+
+    protected expanded = new Set<string>();
+    protected details = new Map<string, ShardDetails | string>();
+
+    @postConstruct()
+    protected override init(): void {
+        this.id = BrokspaceShardsWidget.ID;
+        this.title.label = nls.localize('brokspace/view/shards', 'Shards');
+        super.init();
+    }
+
+    protected override onStateChange(state: BrokspaceState): void {
+        // Shards may have been installed, upgraded or removed: reload what is expanded.
+        if (state.kind === 'ready') {
+            this.details.clear();
+            this.expanded.forEach(name => this.loadDetails(name));
+        }
+        super.onStateChange(state);
+    }
+
+    toggle(name: string): void {
+        if (this.expanded.delete(name)) {
+            this.update();
+            return;
+        }
+        this.expanded.add(name);
+        if (!this.details.has(name)) {
+            this.loadDetails(name);
+        }
+        this.update();
+    }
+
+    protected async loadDetails(name: string): Promise<void> {
+        const root = this.model.root;
+        if (!root) {
+            return;
+        }
+        try {
+            this.details.set(name, await this.service.shardInfo(root, name));
+        } catch (error) {
+            this.details.set(name, error instanceof Error ? error.message : String(error));
+        }
+        this.update();
+    }
+
+    protected render(): React.ReactNode {
+        const state = this.model.state;
+        if (state.kind !== 'ready') {
+            return this.empty(nls.localize('brokspace/view/shardsUnavailable', 'Shards appear once Brokspace is set up in this folder.'));
+        }
+        const shards = state.status.shards ?? [];
+        if (!shards.length) {
+            return this.empty(
+                nls.localize('brokspace/view/noShards', 'No shards yet. Shards are small programs and skill packs that react to your workspace.'),
+                [
+                    { label: nls.localize('brokspace/view/install', 'Install'), command: BrokspaceCommands.INSTALL_SHARD.id, primary: true },
+                    { label: nls.localize('brokspace/view/create', 'Create'), command: BrokspaceCommands.NEW_SHARD.id },
+                ]);
+        }
+        return <ul className='bk-list' role='tree'>
+            {shards.map(shard => this.renderShard(shard))}
+        </ul>;
+    }
+
+    protected renderShard(shard: ShardInfo): React.ReactNode {
+        const isOpen = this.expanded.has(shard.name);
+        return <li key={shard.name} className={`bk-item ${isOpen ? 'bk-item-open' : ''}`} role='treeitem' aria-expanded={isOpen}>
+            <div className='bk-row' tabIndex={0} title={shard.description}
+                onClick={() => this.toggle(shard.name)} onKeyDown={e => e.key === 'Enter' && this.toggle(shard.name)}>
+                <span className={`bk-chevron ${codicon(isOpen ? 'chevron-down' : 'chevron-right')}`} />
+                <span className={`bk-dot ${shardDot(shard)}`} title={shardState(shard)} />
+                <span className='bk-row-name'>{shard.name}</span>
+                <span className='bk-row-meta'>{shard.version}</span>
+                <span className='bk-row-actions'>
+                    {shard.source !== 'builtin' && this.iconButton('trash', nls.localize('brokspace/view/removeShard', 'Remove {0}', shard.name),
+                        () => this.run(BrokspaceCommands.REMOVE_SHARD.id, shard.name))}
+                </span>
+            </div>
+            {isOpen && this.renderDetails(shard)}
+        </li>;
+    }
+
+    protected renderDetails(shard: ShardInfo): React.ReactNode {
+        const details = this.details.get(shard.name);
+        if (details === undefined) {
+            return <div className='bk-details bk-muted'>{nls.localize('brokspace/view/loading', 'Loading…')}</div>;
+        }
+        if (typeof details === 'string') {
+            return <div className='bk-details bk-error'>{details}</div>;
+        }
+        const { manifest } = details;
+        const permissions = manifest.permissions ?? {};
+        const none = nls.localize('brokspace/view/none', 'none');
+        const list = (values?: string[]) => values?.length ? values.join(', ') : none;
+        const rows: [string, string][] = [
+            [nls.localize('brokspace/view/state', 'State'), shardState(shard)],
+            [nls.localize('brokspace/view/reads', 'Reads'), list(permissions.filesystem?.read)],
+            [nls.localize('brokspace/view/writes', 'Writes'), list(permissions.filesystem?.write)],
+            [nls.localize('brokspace/view/network', 'Network'), permissions.network
+                ? nls.localize('brokspace/view/yes', 'yes') : nls.localize('brokspace/view/no', 'no')],
+            [nls.localize('brokspace/view/runs', 'Runs'), list(permissions.process)],
+            [nls.localize('brokspace/view/listens', 'Listens to'), list(manifest.subscribes_to)],
+            [nls.localize('brokspace/view/publishes', 'Publishes'), list(manifest.publishes_to)],
+            [nls.localize('brokspace/view/skills', 'Skills'), list(manifest.skills)],
+            [nls.localize('brokspace/view/source', 'Source'), details.source ?? shard.source ?? none],
+        ];
+        return <div className='bk-details'>
+            {manifest.description && <p className='bk-details-text'>{manifest.description}</p>}
+            <dl className='bk-props'>
+                {rows.map(([key, value]) => <React.Fragment key={key}><dt>{key}</dt><dd title={value}>{value}</dd></React.Fragment>)}
+            </dl>
+        </div>;
+    }
+}
+
+/** Skills from the workspace, installed shards and brok itself. */
+@injectable()
+export class BrokspaceSkillsWidget extends BrokspacePart {
+
+    static readonly ID = 'brokspace-skills';
+
+    protected skills: SkillInfo[] = [];
+    protected loaded = false;
+
+    @postConstruct()
+    protected override init(): void {
+        this.id = BrokspaceSkillsWidget.ID;
+        this.title.label = nls.localize('brokspace/view/skills', 'Skills');
+        super.init();
+    }
+
+    protected override onStateChange(state: BrokspaceState): void {
+        if (state.kind === 'ready' && !this.loaded) {
+            this.load();
+        }
+        super.onStateChange(state);
+    }
+
+    protected async load(): Promise<void> {
+        const root = this.model.root;
+        if (!root) {
+            return;
+        }
+        this.loaded = true;
+        try {
+            this.skills = await this.service.skills(root);
+        } catch {
+            this.loaded = false; // try again on the next refresh
+        }
+        this.update();
+    }
+
+    protected render(): React.ReactNode {
+        if (this.model.state.kind !== 'ready') {
+            return this.empty(nls.localize('brokspace/view/skillsUnavailable', 'Skills appear once Brokspace is set up in this folder.'));
+        }
+        if (!this.skills.length) {
+            return this.empty(nls.localize('brokspace/view/noSkills', 'No skills found.'));
+        }
+        const group = (title: string, userInvoked: boolean) => {
+            const skills = this.skills.filter(skill => skill.user_invoked === userInvoked);
+            return skills.length > 0 && <>
+                <div className='bk-group'>{title}</div>
+                {skills.map(skill => <li key={skill.name} className='bk-item'>
+                    <div className='bk-row' title={skill.description}>
+                        <span className={codicon(userInvoked ? 'play-circle' : 'symbol-method')} />
+                        <span className='bk-row-name'>{skill.name}</span>
+                        <span className='bk-row-meta'>{skill.source}</span>
+                        <span className='bk-row-actions'>
+                            {this.iconButton('play', nls.localize('brokspace/view/runSkill', 'Run {0}', skill.name),
+                                () => this.run(BrokspaceCommands.RUN_SKILL.id, skill.name))}
+                        </span>
+                    </div>
+                </li>)}
+            </>;
+        };
+        return <ul className='bk-list'>
+            {group(nls.localize('brokspace/view/workflows', 'Workflows'), true)}
+            {group(nls.localize('brokspace/view/usedByAgents', 'Used by agents'), false)}
+        </ul>;
+    }
+}
+
+export function shardState(shard: ShardInfo): string {
+    switch (shard.state) {
+        case 'enabled': return nls.localize('brokspace/shard/enabled', 'Enabled');
+        case 'disabled': return nls.localize('brokspace/shard/disabled', 'Disabled');
+        case 'skills': return nls.localize('brokspace/shard/skills', 'Skills only');
+        case 'missing-binary': return nls.localize('brokspace/shard/missingBinary', 'Binary missing');
+    }
+}
+
+function shardDot(shard: ShardInfo): string {
+    switch (shard.state) {
+        case 'enabled': return 'bk-dot-on';
+        case 'skills': return 'bk-dot-info';
+        case 'missing-binary': return 'bk-dot-warn';
+        default: return '';
     }
 }
 

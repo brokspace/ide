@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: MIT
 // *****************************************************************************
 
+import '../../src/browser/style/tokens.css';
+import '../../src/browser/style/shell.css';
 import '../../src/browser/style/index.css';
 
 import { AIRegistryConfiguration } from '@theia/ai-registry/lib/common/ai-registry-configuration';

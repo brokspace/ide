@@ -56,11 +56,14 @@
     "lint:fix": "eslint --ext js,jsx,ts,tsx scripts --fix && lerna run lint:fix",
     "postinstall": "theia-patch && npx patch-package --patch-dir patches",
     "fetch:brok": "node scripts/fetch-brok.mjs",
-    "plugins:local": "node scripts/copy-local-plugins.mjs"
+    "plugins:local": "node scripts/copy-local-plugins.mjs",
+    "i18n:extract": "theia nls-extract -o theia-extensions/product/i18n/nls.json -f \"theia-extensions/*/src/**/*.ts\" \"theia-extensions/*/src/**/*.tsx\"",
+    "i18n:check": "node scripts/check-i18n.mjs"
   },
   "theiaPluginsDir": "plugins",
   "theiaPlugins": {
-    "vscode-builtin-extensions": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode-builtin-extensions-1.108.2.tar.gz"
+    "vscode-builtin-extensions": "https://github.com/eclipse-theia/vscode-builtin-extensions/releases/download/1.108.2/vscode-builtin-extensions-1.108.2.tar.gz",
+    "MS-CEINTL.vscode-language-pack-pt-BR": "https://open-vsx.org/api/MS-CEINTL/vscode-language-pack-pt-BR/1.108.0/file/MS-CEINTL.vscode-language-pack-pt-BR-1.108.0.vsix"
   },
   "theiaPluginsExcludeIds": [
     "ms-vscode.js-debug-companion",

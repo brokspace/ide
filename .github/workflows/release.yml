@@ -2,8 +2,9 @@ name: Release
 
 # Tag vX.Y.Z (matching package.json) to build and publish Brokspace IDE for
 # Linux (deb, AppImage, tar.gz), macOS (dmg, zip) and Windows (NSIS), with
-# brok and brok-agent bundled. Optional follow-ups, each skipped when its
-# secret is missing:
+# brok and brok-agent bundled. The Package workflow builds the installers;
+# this one attaches them to the release and publishes it. Optional
+# follow-ups, each skipped when its secret is missing:
 #   HOMEBREW_TAP_TOKEN  - update brokspace/homebrew-tap (Casks/brokspace-ide.rb)
 #   APT_GPG_PRIVATE_KEY, APT_GPG_KEY_ID, APT_REPO_TOKEN - publish the APT repository (brokspace/apt, GitHub Pages)
 
@@ -33,64 +34,28 @@ jobs:
 
   package:
     needs: create-release
-    name: ${{ matrix.name }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { name: linux-x64, os: ubuntu-latest, platform: linux, arch: x86_64 }
-          - { name: linux-arm64, os: ubuntu-24.04-arm, platform: linux, arch: aarch64 }
-          - { name: macos-arm64, os: macos-latest, platform: macos, arch: aarch64 }
-          - { name: macos-x64, os: macos-15-intel, platform: macos, arch: x86_64 }
-          - { name: windows-x64, os: windows-latest, platform: windows, arch: x86_64 }
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    uses: ./.github/workflows/package.yml
+    with:
+      ref: ${{ inputs.tag || github.ref_name }}
+
+  upload:
+    needs: package
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
         with:
-          ref: ${{ env.TAG }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: yarn
-      - name: System libraries for native modules
-        if: matrix.platform == 'linux'
-        run: sudo apt-get update && sudo apt-get install -y libxkbfile-dev libsecret-1-dev rpm
-      - name: Install
-        run: yarn install --frozen-lockfile --network-timeout 600000
-      - name: Bundle brok and brok-agent
-        run: node scripts/fetch-brok.mjs --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-      - name: Build
-        run: yarn build:extensions && yarn download:plugins && yarn electron build:prod
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-      - name: Package
-        run: yarn electron package
-      - name: Checksums and upload
-        shell: bash
+          pattern: ide-*
+          path: dist
+          merge-multiple: true
+      - name: Attach the installers to the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cd applications/electron/dist
-          shopt -s nullglob
-          files=(*.deb *.AppImage *.tar.gz *.dmg *.zip *.exe *.blockmap latest*.yml)
-          for f in *.deb *.AppImage *.tar.gz *.dmg *.zip *.exe; do
-            if command -v sha256sum >/dev/null; then sha256sum "$f" | cut -d' ' -f1 > "$f.sha256"; else shasum -a 256 "$f" | cut -d' ' -f1 > "$f.sha256"; fi
-            files+=("$f.sha256")
-          done
-          ls -la
-          gh release upload "$TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
-      - name: Keep the debs for the APT repository
-        if: matrix.platform == 'linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: deb-${{ matrix.name }}
-          path: applications/electron/dist/*.deb
+          ls -la dist
+          gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
 
   publish:
-    needs: package
+    needs: upload
     runs-on: ubuntu-latest
     steps:
       - name: Publish the release
@@ -128,7 +93,7 @@ jobs:
           ref: ${{ env.TAG }}
       - uses: actions/download-artifact@v4
         with:
-          pattern: deb-*
+          pattern: ide-linux-*
           path: debs
           merge-multiple: true
       - name: Publish brokspace/apt

@@ -2,9 +2,7 @@
    fixed; everything else follows the active theme. */
 
 :root {
-    --bk-forge: #FF8A3D;
-    --bk-forge-700: #A8410F;
-    --bk-icon: url(../icons/app-icon.png);
+    --bk-app-icon: url(../icons/app-icon.png);
     --bk-mark: url(../icons/mark-on-dark.svg);
     --bk-mark-light: url(../icons/mark.svg);
 }
@@ -15,18 +13,14 @@ body.theia-light {
 }
 
 .bk-accent {
-    color: var(--bk-forge);
+    color: var(--bk-accent);
     font-weight: 600;
-}
-
-body.theia-light .bk-accent {
-    color: var(--bk-forge-700);
 }
 
 /* The app icon on the welcome tab (kept in color, not masked). */
 .lm-TabBar.theia-app-centers .lm-TabBar-tabIcon.bk-welcome-tab-icon,
 .lm-TabBar-tab.lm-mod-drag-image .lm-TabBar-tabIcon.bk-welcome-tab-icon {
-    background: var(--bk-icon) center/contain no-repeat content-box;
+    background: var(--bk-app-icon) center/contain no-repeat content-box;
     -webkit-mask: none;
     mask: none;
     min-height: var(--theia-icon-size);
@@ -35,11 +29,14 @@ body.theia-light .bk-accent {
 /* ------------------------------------------------------------- home */
 
 .bk-home .gs-content-container {
-    max-width: 960px;
+    width: min(100%, 760px);
+    margin: 0 auto;
+    padding: 0 var(--bk-space-6);
+    box-sizing: border-box;
 }
 
 .bk-hero {
-    margin: 24px 0 32px;
+    margin: clamp(var(--bk-space-6), 8vh, 72px) 0 var(--bk-space-8);
 }
 
 .bk-hero-brand {
@@ -58,7 +55,7 @@ body.theia-light .bk-accent {
 
 .bk-product-name {
     margin: 0;
-    font-size: 2.2em;
+    font-size: clamp(1.6em, 4vw, 2.2em);
     font-weight: 700;
     letter-spacing: -0.02em;
 }
@@ -149,21 +146,40 @@ body.theia-light .bk-accent {
     border-color: color-mix(in srgb, var(--bk-forge) 60%, transparent);
 }
 
-.bk-home-walkthroughs:empty {
-    display: none;
-}
-
 .bk-home-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 32px;
-    margin-top: 8px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--bk-space-6) var(--bk-space-8);
 }
 
-@media (max-width: 760px) {
-    .bk-home-grid {
-        grid-template-columns: 1fr;
-    }
+.bk-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--bk-space-2) var(--bk-space-4);
+    margin: var(--bk-space-6) 0;
+    padding-top: var(--bk-space-4);
+    border-top: 1px solid var(--theia-widget-border, var(--theia-panel-border, transparent));
+}
+
+.bk-footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--bk-space-2);
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--theia-descriptionForeground);
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.bk-footer-link:hover {
+    color: var(--theia-foreground);
+}
+
+.bk-footer-link .codicon {
+    font-size: var(--bk-icon);
 }
 
 .bk-home-column .gs-section {
@@ -195,7 +211,7 @@ body.theia-light .bk-accent {
     width: 72px;
     height: 72px;
     flex: none;
-    background: var(--bk-icon) no-repeat center / contain;
+    background: var(--bk-app-icon) no-repeat center / contain;
 }
 
 .bk-about .bk-product-name {
