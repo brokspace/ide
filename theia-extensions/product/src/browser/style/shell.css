@@ -1,0 +1,66 @@
+/* A quieter workbench: thinner chrome, one icon size, fewer borders. Only
+   sizes and spacing change here; colors stay with the theme. */
+
+:root {
+    /* Activity bar: narrower, icons at the shared activity size */
+    --theia-private-sidebar-tab-width: 44px;
+    --theia-private-sidebar-icon-size: var(--bk-activity-icon);
+    --theia-private-sidebar-tab-padding-top-and-bottom: 10px;
+    --theia-private-sidebar-tab-padding-left-and-right: 12px;
+
+    /* Editor tabs and view toolbars */
+    --theia-private-horizontal-tab-height: 32px;
+
+    /* Thin scrollbars */
+    --theia-scrollbar-width: 8px;
+    --theia-scrollbar-rail-width: 8px;
+}
+
+/* Activity bar icons: one optical size, quiet until hovered or active. */
+.theia-app-sides .lm-TabBar-tabIcon.codicon,
+.theia-app-sides .lm-TabBar-tabIcon[class*='codicon-'] {
+    font-size: var(--bk-activity-icon);
+}
+
+.theia-app-sides .lm-TabBar-tab:not(.lm-mod-current) .lm-TabBar-tabIcon {
+    opacity: 0.6;
+}
+
+.theia-app-sides .lm-TabBar-tab:hover .lm-TabBar-tabIcon {
+    opacity: 1;
+}
+
+/* No hard lines between the side panels and the editor. */
+#theia-left-content-panel,
+#theia-right-content-panel,
+#theia-bottom-content-panel {
+    border: none;
+}
+
+/* View part headers: sentence case, smaller. */
+.theia-view-container-part-title .theia-view-container-part-title-label,
+.theia-sidepanel-title {
+    letter-spacing: 0.02em;
+}
+
+/* Rounded inputs and buttons, from the shared radius. */
+.theia-input,
+.theia-select,
+.theia-button {
+    border-radius: var(--bk-radius);
+}
+
+/* Quick input (command palette): a floating card. */
+.quick-input-widget {
+    border-radius: var(--bk-radius-lg) !important;
+    overflow: hidden;
+}
+
+/* Status bar: a little more air, one icon size. */
+#theia-statusBar .element {
+    padding: 0 var(--bk-space-2);
+}
+
+#theia-statusBar .element .codicon {
+    font-size: var(--theia-ui-font-size1);
+}

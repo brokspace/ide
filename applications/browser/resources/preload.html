@@ -69,6 +69,15 @@
   <polygon fill="url(#mark-flap)" points="392,709 496,657 820,819 526,776"/>
   <polygon fill="url(#mark-wedge)" points="526,776 820,819 0,1450 0,1039"/></svg>
     </div>
+    <script>
+        // First start: Brazilian Portuguese systems get the IDE in pt-BR; others in English.
+        // Afterwards the choice is the user's (Configure Display Language).
+        try {
+            if (!localStorage.getItem('localeId') && /^pt(-|$)/i.test(navigator.language)) {
+                localStorage.setItem('localeId', 'pt-br');
+            }
+        } catch (e) { /* storage unavailable: English */ }
+    </script>
 </body>
 
 </html>

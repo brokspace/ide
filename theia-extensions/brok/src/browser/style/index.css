@@ -1,8 +1,8 @@
 /* Brokspace view, status bar and chat agent. Colors come from the active
-   theme (--theia-*), so the view follows Brokspace Dark/Light or any other. */
+   theme (--theia-*); sizes and brand colors from the tokens in
+   brokspace-ide-product-ext (style/tokens.css), with fallbacks here. */
 
 :root {
-    --bk-forge: #FF8A3D;
     --bk-mark-mono: url('./mark-mono.svg');
     --bk-mark-color: url('./mark-color.svg');
 }
@@ -17,15 +17,15 @@
 }
 
 .brokspace-view-icon {
-    /* Activity bar icons are 24 px boxes; the mark is tall and narrow. */
-    -webkit-mask-size: auto 22px;
-    mask-size: auto 22px;
+    /* Same optical size as the codicons beside it in the activity bar. */
+    -webkit-mask-size: auto var(--bk-activity-icon, 20px);
+    mask-size: auto var(--bk-activity-icon, 20px);
 }
 
 .codicon-brokspace-mark {
     display: inline-block;
-    width: 10px;
-    height: 16px;
+    width: 0.65em;
+    height: 1em;
     vertical-align: text-bottom;
 }
 
@@ -37,154 +37,167 @@
     -webkit-mask-size: auto 80%;
     mask-size: auto 80%;
     min-width: 12px;
-    min-height: 16px;
+    min-height: var(--bk-icon, 16px);
 }
 
 .brokspace-status-attention {
-    color: var(--theia-statusBarItem-warningForeground, var(--bk-forge)) !important;
+    color: var(--theia-statusBarItem-warningForeground, var(--bk-forge, #FF8A3D)) !important;
 }
 
-/* ------------------------------------------------------------------ view */
+/* ------------------------------------------------------------------ parts */
 
-.brokspace-widget {
+.bk-part {
+    /* The part scrolls itself: content taller than the part never moves the window. */
+    height: 100%;
+    box-sizing: border-box;
+    container-type: inline-size;
     color: var(--theia-foreground);
     font-size: var(--theia-ui-font-size1);
+    line-height: var(--bk-line, 1.5);
     overflow-y: auto;
 }
 
-.bk-view {
+.bk-muted {
+    color: var(--theia-descriptionForeground);
+    padding: var(--bk-space-1, 4px) 0;
+}
+
+.bk-error {
+    color: var(--theia-errorForeground);
+    white-space: pre-wrap;
+}
+
+.bk-empty {
+    padding: var(--bk-space-2, 8px) var(--bk-space-4, 16px) var(--bk-space-3, 12px);
+    color: var(--theia-descriptionForeground);
+}
+
+.bk-empty p {
+    margin: 0 0 var(--bk-space-3, 12px);
+}
+
+.bk-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--bk-space-2, 8px);
+}
+
+.bk-empty-actions .theia-button {
+    margin: 0;
+}
+
+/* Setup guidance: one card, one action. */
+.bk-card {
+    margin: var(--bk-space-3, 12px);
+    padding: var(--bk-space-4, 16px);
+    border-radius: var(--bk-radius-lg, 10px);
+    background: var(--theia-sideBarSectionHeader-background, var(--theia-editorWidget-background));
+    border: 1px solid var(--theia-widget-border, transparent);
+}
+
+.bk-card-icon {
+    font-size: calc(var(--bk-icon, 16px) * 1.5);
+    color: var(--bk-accent, var(--theia-focusBorder));
+}
+
+.bk-card-title {
+    margin: var(--bk-space-2, 8px) 0 var(--bk-space-1, 4px);
+    font-weight: 600;
+}
+
+.bk-card-text {
+    margin-bottom: var(--bk-space-3, 12px);
+    color: var(--theia-descriptionForeground);
+    overflow-wrap: anywhere;
+}
+
+.bk-card .theia-button {
+    margin: 0;
+    width: 100%;
+}
+
+/* ------------------------------------------------------------------ overview */
+
+.bk-overview {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding-bottom: 16px;
-}
-
-.bk-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 12px 8px;
-}
-
-.bk-mark {
-    width: 12px;
-    height: 20px;
-    background: var(--bk-mark-color) no-repeat center / contain;
-}
-
-.bk-title {
-    flex: 1;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-}
-
-.bk-pill {
-    border-radius: 999px;
-    padding: 1px 8px;
-    font-size: var(--theia-ui-font-size0);
-    color: var(--theia-descriptionForeground);
-    border: 1px solid var(--theia-panel-border, var(--theia-widget-border));
-}
-
-.bk-pill-on {
-    color: var(--bk-forge);
-    border-color: color-mix(in srgb, var(--bk-forge) 45%, transparent);
-}
-
-.bk-section {
-    padding: 8px 12px;
-    border-top: 1px solid var(--theia-sideBarSectionHeader-border, var(--theia-panel-border, transparent));
-}
-
-.bk-section-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 0 0 8px;
-    font-size: var(--theia-ui-font-size0);
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--theia-descriptionForeground);
-}
-
-.bk-subtitle {
-    margin: 8px 0 4px;
-    font-size: var(--theia-ui-font-size0);
-    color: var(--theia-descriptionForeground);
+    gap: var(--bk-space-3, 12px);
+    padding: var(--bk-space-2, 8px) var(--bk-space-4, 16px) var(--bk-space-4, 16px);
 }
 
 .bk-facts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
     display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 4px 12px;
-    margin: 0;
+    gap: var(--bk-space-1, 4px);
 }
 
-.bk-facts dt {
-    color: var(--theia-descriptionForeground);
-}
-
-.bk-facts dd {
-    margin: 0;
+.bk-facts li {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--bk-space-2, 8px);
     min-width: 0;
+}
+
+.bk-facts .codicon {
+    width: var(--bk-icon, 16px);
+    font-size: var(--bk-icon, 16px);
+    color: var(--theia-descriptionForeground);
+    text-align: center;
+}
+
+.bk-fact-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .bk-dot {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
     flex: none;
+    width: 8px;
+    height: 8px;
+    margin: 0 4px;
+    border-radius: 50%;
     background: var(--theia-descriptionForeground);
     opacity: 0.6;
 }
 
 .bk-dot-on {
-    background: var(--bk-forge);
+    background: var(--theia-testing-iconPassed, #3FB950);
     opacity: 1;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--bk-forge) 22%, transparent);
 }
 
-.bk-link,
-.bk-icon-button {
-    background: none;
-    border: none;
+.bk-dot-info {
+    background: var(--theia-focusBorder);
+    opacity: 1;
+}
+
+.bk-dot-warn {
+    background: var(--theia-editorWarning-foreground, #D29922);
+    opacity: 1;
+}
+
+.bk-link {
+    margin-left: auto;
     padding: 0;
+    border: none;
+    background: none;
     color: var(--theia-textLink-foreground);
     cursor: pointer;
+    font: inherit;
 }
 
 .bk-link:hover {
     text-decoration: underline;
 }
 
-.bk-icon-button {
-    color: var(--theia-icon-foreground);
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.bk-icon-button:hover {
-    background: var(--theia-toolbar-hoverBackground);
-}
-
 .bk-search {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 0 8px;
-    border-radius: 6px;
+    gap: var(--bk-space-2, 8px);
+    padding: 0 var(--bk-space-2, 8px);
+    border-radius: var(--bk-radius, 6px);
     background: var(--theia-input-background);
     border: 1px solid var(--theia-input-border, transparent);
 }
@@ -193,155 +206,242 @@
     border-color: var(--theia-focusBorder);
 }
 
-.bk-search-input.theia-input {
-    flex: 1;
-    border: none;
-    background: transparent;
-    padding: 6px 0;
-    outline: none !important;
+.bk-search .codicon {
+    color: var(--theia-descriptionForeground);
 }
 
-.bk-hits,
-.bk-list {
+.bk-search-input.theia-input {
+    flex: 1;
+    min-width: 0;
+    padding: var(--bk-space-1, 4px) 0;
+    border: none;
+    outline: none;
+    background: transparent;
+}
+
+.bk-hits {
     list-style: none;
-    margin: 6px 0 0;
+    margin: var(--bk-space-2, 8px) 0 0;
     padding: 0;
 }
 
 .bk-hit {
-    padding: 6px 8px;
-    margin: 0 -8px;
-    border-radius: 6px;
+    padding: var(--bk-space-1, 4px) var(--bk-space-2, 8px);
+    border-radius: var(--bk-radius, 6px);
     cursor: pointer;
 }
 
 .bk-hit:hover,
-.bk-row:hover {
+.bk-hit:focus-visible {
     background: var(--theia-list-hoverBackground);
+    outline: none;
 }
 
 .bk-hit-head {
     display: flex;
-    justify-content: space-between;
-    gap: 8px;
+    gap: var(--bk-space-2, 8px);
+    align-items: baseline;
+    min-width: 0;
 }
 
 .bk-hit-symbol {
-    font-weight: 600;
+    flex: none;
+    max-width: 50%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.bk-hit-score {
-    color: var(--bk-forge);
-    font-variant-numeric: tabular-nums;
-    font-size: var(--theia-ui-font-size0);
+    font-weight: 600;
 }
 
 .bk-hit-path,
-.bk-muted,
-.bk-row-meta {
-    color: var(--theia-descriptionForeground);
-    font-size: var(--theia-ui-font-size0);
-}
-
-.bk-hit-path {
+.bk-hit-snippet {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--theia-descriptionForeground);
 }
 
 .bk-hit-snippet {
-    margin-top: 2px;
     font-family: var(--theia-code-font-family);
-    font-size: var(--theia-code-font-size, var(--theia-ui-font-size0));
-    color: var(--theia-descriptionForeground);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.bk-error {
-    color: var(--theia-errorForeground);
-    margin-top: 6px;
+    font-size: var(--theia-code-font-size);
 }
 
 .bk-actions {
     display: grid;
-    gap: 4px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--bk-space-2, 8px);
 }
 
 .bk-action {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    border-radius: 6px;
+    gap: var(--bk-space-1, 4px);
+    padding: var(--bk-space-2, 8px) var(--bk-space-1, 4px);
+    border-radius: var(--bk-radius, 6px);
     border: 1px solid var(--theia-widget-border, var(--theia-panel-border, transparent));
     background: transparent;
     color: var(--theia-foreground);
+    font: inherit;
     cursor: pointer;
-    text-align: left;
-}
-
-.bk-action:hover {
-    border-color: color-mix(in srgb, var(--bk-forge) 60%, transparent);
-    background: var(--theia-list-hoverBackground);
 }
 
 .bk-action .codicon {
-    color: var(--bk-forge);
+    font-size: var(--bk-icon, 16px);
+}
+
+.bk-action:hover {
+    background: var(--theia-list-hoverBackground);
+    border-color: color-mix(in srgb, var(--bk-accent, var(--theia-focusBorder)) 50%, transparent);
+}
+
+/* A narrow sidebar: actions as a compact list. */
+@container (max-width: 220px) {
+    .bk-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .bk-action {
+        flex-direction: row;
+        justify-content: flex-start;
+        padding: var(--bk-space-1, 4px) var(--bk-space-2, 8px);
+    }
+}
+
+/* ------------------------------------------------------------------ lists (shards, skills) */
+
+.bk-list {
+    list-style: none;
+    margin: 0;
+    padding: var(--bk-space-1, 4px) 0 var(--bk-space-2, 8px);
+}
+
+.bk-group {
+    padding: var(--bk-space-2, 8px) var(--bk-space-4, 16px) var(--bk-space-1, 4px);
+    color: var(--theia-descriptionForeground);
+    font-size: var(--theia-ui-font-size0);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .bk-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 3px 8px;
-    margin: 0 -8px;
-    border-radius: 6px;
+    gap: var(--bk-space-2, 8px);
+    min-height: var(--bk-row-height, 24px);
+    padding: 0 var(--bk-space-2, 8px) 0 var(--bk-space-3, 12px);
+    cursor: pointer;
+}
+
+.bk-row:hover,
+.bk-row:focus-visible {
+    background: var(--theia-list-hoverBackground);
+    outline: none;
+}
+
+.bk-row > .codicon,
+.bk-chevron {
+    flex: none;
+    width: var(--bk-icon, 16px);
+    font-size: var(--bk-icon, 16px);
+    color: var(--theia-descriptionForeground);
+}
+
+.bk-row .bk-dot {
+    margin: 0;
 }
 
 .bk-row-name {
     flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.bk-row .bk-icon-button {
+.bk-row-meta {
+    flex: none;
+    color: var(--theia-descriptionForeground);
+    font-size: var(--theia-ui-font-size0);
+}
+
+.bk-row-actions {
+    display: flex;
+    flex: none;
     visibility: hidden;
 }
 
-.bk-row:hover .bk-icon-button {
+.bk-row:hover .bk-row-actions,
+.bk-row:focus-within .bk-row-actions,
+.bk-item-open > .bk-row .bk-row-actions {
     visibility: visible;
 }
 
-.bk-card {
-    margin: 8px 12px;
-    padding: 16px;
-    border-radius: 10px;
-    background: var(--theia-sideBarSectionHeader-background, var(--theia-editorWidget-background));
-    border: 1px solid var(--theia-widget-border, var(--theia-panel-border, transparent));
+/* Narrow: the meta column goes first. */
+@container (max-width: 200px) {
+    .bk-row-meta {
+        display: none;
+    }
 }
 
-.bk-card-title {
-    font-weight: 600;
-    margin-bottom: 6px;
+.bk-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--bk-icon, 16px) + 6px);
+    height: calc(var(--bk-icon, 16px) + 6px);
+    padding: 0;
+    border: none;
+    border-radius: var(--bk-radius-sm, 4px);
+    background: none;
+    color: var(--theia-icon-foreground, var(--theia-foreground));
+    font-size: var(--bk-icon, 16px);
+    cursor: pointer;
 }
 
-.bk-card-text {
+.bk-icon-button:hover {
+    background: var(--theia-toolbar-hoverBackground);
+}
+
+.bk-details {
+    padding: var(--bk-space-1, 4px) var(--bk-space-4, 16px) var(--bk-space-3, 12px)
+        calc(var(--bk-space-3, 12px) + var(--bk-icon, 16px) + var(--bk-space-2, 8px));
+}
+
+.bk-details-text {
+    margin: 0 0 var(--bk-space-2, 8px);
     color: var(--theia-descriptionForeground);
-    margin-bottom: 12px;
-    line-height: 1.45;
 }
 
-.bk-card-button.theia-button {
-    margin-left: 0;
+.bk-props {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 2px var(--bk-space-3, 12px);
+    margin: 0;
+    font-size: var(--theia-ui-font-size0);
 }
 
-.bk-empty {
-    padding: 16px 12px;
+.bk-props dt {
     color: var(--theia-descriptionForeground);
+}
+
+.bk-props dd {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@container (max-width: 220px) {
+    .bk-details {
+        padding-left: var(--bk-space-4, 16px);
+    }
+
+    .bk-props {
+        grid-template-columns: 1fr;
+    }
+
+    .bk-props dd {
+        margin-bottom: var(--bk-space-1, 4px);
+    }
 }

@@ -8,6 +8,7 @@ import * as React from 'react';
 import { AboutDialog, AboutDialogProps, ABOUT_CONTENT_CLASS } from '@theia/core/lib/browser/about-dialog';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { VSXEnvironment } from '@theia/vsx-registry/lib/common/vsx-environment';
+import { nls } from '@theia/core/lib/common/nls';
 import { BRAND, renderProductName } from './branding-util';
 
 @injectable()
@@ -33,15 +34,15 @@ export class BrokspaceAboutDialog extends AboutDialog {
                     <div className='bk-about-logo' />
                     <div>
                         {renderProductName()}
-                        <p className='gs-sub-header'>{BRAND.tagline}</p>
+                        <p className='gs-sub-header'>{nls.localize('brokspace/home/tagline', 'Your workspace, understood.')}</p>
                         <p className='gs-sub-header'>
-                            Version {this.applicationInfo?.version ?? '-'} · VS Code API {this.vscodeApiVersion ?? '-'}
+                            {nls.localize('brokspace/about/versions', 'Version {0} · VS Code API {1}', this.applicationInfo?.version ?? '-', this.vscodeApiVersion ?? '-')}
                         </p>
                         <p className='gs-sub-header'>
                             <a href={BRAND.website} target='_blank' rel='noreferrer'>brokspace.org</a>
                             {' · '}
-                            <a href={BRAND.repository} target='_blank' rel='noreferrer'>Source</a>
-                            {' · '}Built on <a href='https://theia-ide.org' target='_blank' rel='noreferrer'>Eclipse Theia</a>
+                            <a href={BRAND.repository} target='_blank' rel='noreferrer'>{nls.localize('brokspace/about/source', 'Source')}</a>
+                            {' · '}{nls.localize('brokspace/about/builtOn', 'Built on')} <a href='https://theia-ide.org' target='_blank' rel='noreferrer'>Eclipse Theia</a>
                         </p>
                     </div>
                 </div>
