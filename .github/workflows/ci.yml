@@ -30,6 +30,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libxkbfile-dev libsecret-1-dev
       - name: Install
         run: yarn install --frozen-lockfile --network-timeout 600000
+      - name: Translations are complete
+        run: yarn i18n:check
       - name: Build extensions
         run: yarn build:extensions
       - name: Plugins

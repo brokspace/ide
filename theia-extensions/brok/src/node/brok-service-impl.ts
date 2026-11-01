@@ -11,7 +11,8 @@ import * as path from 'path';
 import * as readline from 'readline';
 import { injectable } from '@theia/core/shared/inversify';
 import {
-    AnswerDone, AnswerRequest, BrokClient, BrokInfo, BrokService, BrokStatus, CommandResult, SearchHit, SkillInfo
+    AnswerDone, AnswerRequest, BrokClient, BrokInfo, BrokService, BrokStatus, CommandResult, SearchHit, ShardDetails, ShardManifest,
+    SkillInfo
 } from '../common/brok-protocol';
 
 const EXE = process.platform === 'win32' ? 'brok.exe' : 'brok';
@@ -72,6 +73,11 @@ export class BrokServiceImpl implements BrokService {
 
     async skills(root: string): Promise<SkillInfo[]> {
         return this.json<SkillInfo[]>(root, ['skill', 'list', '--json']);
+    }
+
+    async shardInfo(root: string, name: string): Promise<ShardDetails> {
+        const { stdout } = await this.exec(root, ['shard', 'info', name]);
+        return parseShardInfo(stdout);
     }
 
     async answer(id: string, root: string, request: AnswerRequest): Promise<AnswerDone> {
@@ -174,6 +180,32 @@ export class BrokServiceImpl implements BrokService {
         // No colors or spinners: output is parsed or shown as plain text.
         return { ...process.env, NO_COLOR: '1', CLICOLOR: '0', TERM: 'dumb' };
     }
+}
+
+/**
+ * `brok shard info` prints the pretty-printed `shard.json`, then
+ * `source:`, `sha256:`, `binary:` and `skills:` lines.
+ */
+export function parseShardInfo(stdout: string): ShardDetails {
+    const lines = stdout.split(/\r?\n/);
+    const end = lines.findIndex(line => line === '}');
+    const manifest = JSON.parse(lines.slice(0, end + 1).join('\n')) as ShardManifest;
+    const details: ShardDetails = { manifest, skills: [] };
+    for (const line of lines.slice(end + 1)) {
+        const match = /^(source|binary|skills):\s+(.*)$/.exec(line);
+        if (!match) {
+            continue;
+        }
+        const [, key, value] = match;
+        if (key === 'skills') {
+            details.skills.push(value);
+        } else if (key === 'source') {
+            details.source = value;
+        } else if (!value.startsWith('none')) {
+            details.binary = value;
+        }
+    }
+    return details;
 }
 
 /** brok prints `error: <message>`; keep the message. */

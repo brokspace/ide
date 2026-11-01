@@ -19,7 +19,8 @@
   "theiaExtensions": [
     {
       "frontend": "lib/browser/brokspace-frontend-module",
-      "electronMain": "lib/electron-main/brokspace-main-module"
+      "electronMain": "lib/electron-main/brokspace-main-module",
+      "backend": "lib/node/brokspace-backend-module"
     }
   ],
   "keywords": [
@@ -36,7 +37,8 @@
   "homepage": "https://brokspace.org",
   "files": [
     "lib",
-    "src"
+    "src",
+    "i18n"
   ],
   "scripts": {
     "clean": "rimraf lib *.tsbuildinfo",

@@ -1,0 +1,39 @@
+/* Brokspace design tokens: one place for brand colors, spacing, radii and
+   icon sizes. Every Brokspace view uses these; sizes follow the UI font
+   size, so zooming or a larger font scales the whole interface. */
+
+:root {
+    /* Brand */
+    --bk-forge: #FF8A3D;
+    --bk-forge-700: #A8410F;
+    --bk-accent: var(--bk-forge);
+
+    /* Spacing: a 4 px scale */
+    --bk-space-1: 4px;
+    --bk-space-2: 8px;
+    --bk-space-3: 12px;
+    --bk-space-4: 16px;
+    --bk-space-6: 24px;
+    --bk-space-8: 32px;
+
+    /* Shape */
+    --bk-radius-sm: 4px;
+    --bk-radius: 6px;
+    --bk-radius-lg: 10px;
+
+    /* Icons: codicons everywhere, at two sizes */
+    --bk-icon: 16px;
+    --bk-activity-icon: 20px;
+
+    /* Rhythm */
+    --bk-line: 1.5;
+    --bk-row-height: 24px;
+
+    /* Type: the platform's UI font (Segoe UI, SF, Cantarell...) */
+    --theia-ui-font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Light themes: the darker forge keeps contrast on light backgrounds. */
+body.theia-light {
+    --bk-accent: var(--bk-forge-700);
+}

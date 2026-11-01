@@ -8,6 +8,7 @@
  ********************************************************************************/
 
 import { PreferenceSchema, PreferenceScope } from '@theia/core';
+import { nls } from '@theia/core/lib/common/nls';
 import { FrontendApplicationConfigProvider } from '@theia/core/lib/browser/frontend-application-config-provider';
 
 const DEFAULT_UPDATE_CHANNELS = ['stable', 'preview'];
@@ -25,20 +26,20 @@ export const theiaUpdaterPreferenceSchema: PreferenceSchema = {
     'properties': {
         'updates.checkForUpdates': {
             type: 'boolean',
-            description: 'Automatically check for updates.',
+            description: nls.localize('brokspace/updater/prefCheck', 'Automatically check for updates.'),
             default: true,
             scope: PreferenceScope.User
         },
         'updates.checkInterval': {
             type: 'number',
-            description: 'Interval in minutes between automatic update checks.',
+            description: nls.localize('brokspace/updater/prefInterval', 'Interval in minutes between automatic update checks.'),
             default: 60,
             scope: PreferenceScope.User
         },
         'updates.channel': {
             type: 'string',
             enum: getAvailableUpdateChannels(),
-            description: 'Channel to use for updates.',
+            description: nls.localize('brokspace/updater/prefChannel', 'Channel to use for updates.'),
             default: getAvailableUpdateChannels()[0] ?? '',
             scope: PreferenceScope.User
         },

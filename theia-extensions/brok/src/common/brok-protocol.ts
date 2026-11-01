@@ -56,6 +56,34 @@ export interface ShardInfo {
     source?: string | null;
 }
 
+/** A shard's `shard.json` (the fields the IDE shows). */
+export interface ShardManifest {
+    name: string;
+    version: string;
+    description: string;
+    authors?: string[];
+    license?: string | null;
+    repository?: string | null;
+    runtime?: string;
+    skills?: string[];
+    permissions?: {
+        filesystem?: { read?: string[]; write?: string[] };
+        network?: boolean;
+        process?: string[];
+        env?: string[];
+    };
+    subscribes_to?: string[];
+    publishes_to?: string[];
+}
+
+/** `brok shard info <name>`: the manifest and where the shard comes from. */
+export interface ShardDetails {
+    manifest: ShardManifest;
+    source?: string;
+    binary?: string;
+    skills: string[];
+}
+
 /** One hit of `brok search --json`. */
 export interface SearchHit {
     path: string;
@@ -113,6 +141,7 @@ export interface BrokService extends RpcServer<BrokClient> {
     status(root: string): Promise<BrokStatus>;
     search(root: string, query: string, limit: number): Promise<SearchHit[]>;
     skills(root: string): Promise<SkillInfo[]>;
+    shardInfo(root: string, name: string): Promise<ShardDetails>;
     /**
      * Streams an answer: text fragments arrive through `BrokClient.onAnswerChunk`
      * with the same `id`; the promise resolves when the answer is complete.

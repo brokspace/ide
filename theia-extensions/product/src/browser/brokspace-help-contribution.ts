@@ -12,11 +12,18 @@ import { MenuContribution, MenuModelRegistry } from '@theia/core/lib/common/menu
 import { BRAND } from './branding-util';
 
 export namespace BrokspaceHelpCommands {
-    const CATEGORY = 'Help';
-    export const DOCUMENTATION: Command = { id: 'brokspace-ide.documentation', category: CATEGORY, label: 'Brokspace Documentation' };
-    export const GETTING_STARTED: Command = { id: 'brokspace-ide.gettingStarted', category: CATEGORY, label: 'Brokspace Getting Started Guide' };
-    export const DISCUSSIONS: Command = { id: 'brokspace-ide.discussions', category: CATEGORY, label: 'Ask the Community' };
-    export const REPORT_ISSUE: Command = { id: 'brokspace-ide.reportIssue', category: CATEGORY, label: 'Report an IDE Issue' };
+    export const DOCUMENTATION = Command.toLocalizedCommand({
+        id: 'brokspace-ide.documentation', category: 'Help', label: 'Brokspace Documentation'
+    }, 'brokspace/help/documentation', 'brokspace/help/category');
+    export const GETTING_STARTED = Command.toLocalizedCommand({
+        id: 'brokspace-ide.gettingStarted', category: 'Help', label: 'Brokspace Getting Started Guide'
+    }, 'brokspace/help/gettingStarted', 'brokspace/help/category');
+    export const DISCUSSIONS = Command.toLocalizedCommand({
+        id: 'brokspace-ide.discussions', category: 'Help', label: 'Ask the Community'
+    }, 'brokspace/help/discussions', 'brokspace/help/category');
+    export const REPORT_ISSUE = Command.toLocalizedCommand({
+        id: 'brokspace-ide.reportIssue', category: 'Help', label: 'Report an IDE Issue'
+    }, 'brokspace/help/reportIssue', 'brokspace/help/category');
 }
 
 @injectable()
@@ -35,6 +42,6 @@ export class BrokspaceHelpContribution implements CommandContribution, MenuContr
     registerMenus(menus: MenuModelRegistry): void {
         const path = [...CommonMenus.HELP, 'brokspace'];
         [BrokspaceHelpCommands.GETTING_STARTED, BrokspaceHelpCommands.DOCUMENTATION, BrokspaceHelpCommands.DISCUSSIONS, BrokspaceHelpCommands.REPORT_ISSUE]
-            .forEach((command, i) => menus.registerMenuAction(path, { commandId: command.id, label: command.label, order: String(i) }));
+            .forEach((command, i) => menus.registerMenuAction(path, { commandId: command.id, order: String(i) }));
     }
 }

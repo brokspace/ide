@@ -1,0 +1,12 @@
+{
+  "vscode": {
+    "menubar.contribution": {
+      "mView": "Ver",
+      "mGoto": "Acessar",
+      "mHelp": "Ajuda"
+    },
+    "toggleRenderWhitespace": {
+      "renderWhitespace.selection": "Seleção"
+    }
+  }
+}
