@@ -65,6 +65,11 @@ yarn electron build && yarn electron start
 yarn electron package         # installers in applications/electron/dist
 ```
 
+To try installers without building them yourself, use the Package workflow:
+it runs on pull requests that touch packaging and on demand
+(`gh workflow run package.yml --ref <branch>`), then
+`gh run download <run id> -n ide-windows-x64` (or `linux-x64`, `macos-arm64`, ...).
+
 | Path | What |
 |---|---|
 | `applications/browser`, `applications/electron` | The two app targets and their Theia configuration (defaults: theme, AI, Brokspace agent) |
