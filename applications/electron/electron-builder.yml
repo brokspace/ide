@@ -42,6 +42,8 @@ win:
     - nsis
 mac:
   icon: resources/icons/icon.png
+  # dmg and zip
+  artifactName: BrokspaceIDE-${version}-macos-${arch}.${ext}
   category: public.app-category.developer-tools
   protocols:
     - name: brokspace-ide
@@ -53,6 +55,8 @@ mac:
     - zip
 linux:
   icon: resources/icons/LinuxLauncherIcons
+  # tar.gz; deb and AppImage set their own below
+  artifactName: brokspace-ide-${version}-linux-${arch}.${ext}
   category: Development
   synopsis: Your workspace, understood
   description: The Brokspace IDE, with local-first search, agents, skills and shards.
@@ -92,9 +96,5 @@ deb:
     - git
 appImage:
   artifactName: BrokspaceIDE-${version}-linux-${arch}.${ext}
-zip:
-  artifactName: BrokspaceIDE-${version}-macos-${arch}.${ext}
-tar:
-  artifactName: brokspace-ide-${version}-linux-${arch}.${ext}
 
 afterPack: ./scripts/after-pack.js
