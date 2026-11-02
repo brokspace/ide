@@ -20,7 +20,10 @@ Built on [Eclipse Theia](https://theia-ide.org), so VS Code extensions from
 |---|---|
 | **Layout** | Minimal by default: Explorer, Search, Source Control and Brokspace on the left, the Brokspace agent docked on the right. Debug, Testing, Extensions and Outline stay one shortcut away |
 | **Home** | Ask about the workspace or describe a change; suggestions, open a folder, recent workspaces |
-| **Brokspace view** | **Overview** (service, model, index, search that opens results at the line, Ask / Review / Commit), **Shards** (state, permissions, topics and source of each shard; install, create, remove, browse) and **Skills** |
+| **Brokspace view** | **Overview** (service, model, index, search that opens results at the line, Ask / Review / Commit), **Memory** (recent decisions, facts and chat sessions; remember, open, forget), **Shards** (state, permissions, topics and source of each shard; install, create, remove, browse) and **Skills** |
+| **Brokspace settings** | One page in the editor area (`Ctrl+Alt+,`, or the gear in the Brokspace view): overview, AI model and providers, search and index, memory, linked workspaces, coding agents and diagnostics. Changes are validated and saved to `brok.yml` at once |
+| **Memory** | What Brokspace remembers between sessions, found in every answer: private, shared with the team through git, or global to all your workspaces. Each chat with the agent is remembered; `Ctrl+Alt+M` remembers a decision or the selected code |
+| **Linked workspaces** | Link the services your workspace depends on (a folder or a git URL): answers and search know both, with paths that open in the IDE |
 | **Brokspace agent** | The one way to an LLM: every request goes through brok, which routes it to the provider in `brok.yml`. Follow-ups, `/review`, `/review staged`, `/review base main`, `/skill <name> <input>`. Without an LLM it answers with what the local index finds |
 | **Agent focus mode** | `Ctrl+Shift+A` (`Cmd+Shift+A`): the agent takes most of the window; again to go back |
 | **Source control** | ✨ in the Source Control toolbar writes the commit message from the staged changes |
@@ -32,7 +35,7 @@ Built on [Eclipse Theia](https://theia-ide.org), so VS Code extensions from
 
 The IDE talks to Brokspace only through the `brok` CLI and its `--json`
 output ([contract](https://github.com/brokspace/brok/blob/main/docs/integrations.md)),
-so anything the IDE does, you can script. It needs brok 0.2.4 or newer.
+so anything the IDE does, you can script. It needs brok 0.3.0 or newer.
 
 ## Install
 

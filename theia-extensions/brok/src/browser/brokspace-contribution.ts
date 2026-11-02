@@ -23,14 +23,18 @@ import { MAIN_MENU_BAR, MenuModelRegistry } from '@theia/core/lib/common/menu';
 import { MessageService } from '@theia/core/lib/common/message-service';
 import { nls } from '@theia/core/lib/common/nls';
 import { inject, injectable } from '@theia/core/shared/inversify';
+import { EditorManager } from '@theia/editor/lib/browser/editor-manager';
+import { EDITOR_CONTEXT_MENU } from '@theia/editor/lib/browser/editor-menu';
 import { OutputChannel, OutputChannelManager } from '@theia/output/lib/browser/output-channel';
 import { ScmService } from '@theia/scm/lib/browser/scm-service';
 import { ScmWidget } from '@theia/scm/lib/browser/scm-widget';
-import { BrokService } from '../common/brok-protocol';
+import { BrokService, Memory, MemoryKind, MemoryScope, MINIMUM_BROK_VERSION } from '../common/brok-protocol';
 import { BROKSPACE_AGENT_ID } from './brokspace-chat-agent';
 import { BrokspaceCommands } from './brokspace-commands';
+import { BrokspaceMemory, MEMORY_SCOPES } from './brokspace-memory';
 import { BrokspaceModel, BrokspaceState } from './brokspace-model';
-import { BrokspaceOverviewWidget, BrokspaceShardsWidget, BrokspaceSkillsWidget } from './brokspace-widget';
+import { BrokspaceSettingsWidget, kindLabel, scopeDescription, SettingsSection } from './brokspace-settings-widget';
+import { BrokspaceMemoryWidget, BrokspaceOverviewWidget, BrokspaceShardsWidget, BrokspaceSkillsWidget } from './brokspace-widget';
 
 export const BROKSPACE_MENU = [...MAIN_MENU_BAR, '7_brokspace'];
 export const BROKSPACE_VIEW_CONTAINER_ID = 'brokspace-view-container';
@@ -68,6 +72,8 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
     @inject(AIChatContribution) protected readonly chatView: AIChatContribution;
     @inject(WidgetManager) protected readonly widgets: WidgetManager;
     @inject(StorageService) protected readonly storage: StorageService;
+    @inject(EditorManager) protected readonly editors: EditorManager;
+    @inject(BrokspaceMemory) protected readonly memory: BrokspaceMemory;
 
     /** Set when this window starts without a saved layout. */
     protected freshLayout = false;
@@ -150,7 +156,8 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
                     nls.localize('brokspace/status/noBrokTooltip', 'Install brok to use Brokspace.'), attention);
                 break;
             case 'outdated':
-                entry(`brok ${state.info.version}`, nls.localize('brokspace/view/outdatedText', 'This IDE needs brok 0.2.4 or newer. Run "brok upgrade" in a terminal.'),
+                entry(`brok ${state.info.version}`,
+                    nls.localize('brokspace/view/outdatedText', 'This IDE needs brok {0} or newer. Run "brok upgrade" in a terminal.', MINIMUM_BROK_VERSION),
                     attention);
                 break;
             case 'error':
@@ -270,6 +277,38 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
             execute: () => this.windowService.openNewWindow(INSTALL_URL, { external: true }),
         });
         registry.registerCommand(BrokspaceCommands.REFRESH, { execute: () => this.model.refresh() });
+
+        registry.registerCommand(BrokspaceCommands.SETTINGS, {
+            execute: (section?: unknown) => this.openSettings(isSection(section) ? section : 'overview'),
+        });
+        registry.registerCommand(BrokspaceCommands.SHOW_MEMORY, { execute: () => this.openSettings('memory') });
+        registry.registerCommand(BrokspaceCommands.REMEMBER, { isEnabled: ready, execute: () => this.remember() });
+        registry.registerCommand(BrokspaceCommands.REMEMBER_SELECTION, {
+            isEnabled: () => ready() && !!this.editors.currentEditor?.editor.selection,
+            execute: () => this.rememberSelection(),
+        });
+        registry.registerCommand(BrokspaceCommands.FORGET_MEMORY, {
+            isEnabled: ready,
+            execute: async (memory?: unknown) => {
+                const target = isMemory(memory) ? memory : await this.pickMemory();
+                const forget = nls.localize('brokspace/settings/forget', 'Forget');
+                if (target && await this.messages.warn(nls.localize('brokspace/settings/forgetConfirm', 'Forget "{0}"?', target.title),
+                    forget, nls.localize('brokspace/prompt/cancel', 'Cancel')) === forget) {
+                    await this.memory.forget(target).catch(error => this.messages.error(String(error instanceof Error ? error.message : error)));
+                }
+            },
+        });
+        registry.registerCommand(BrokspaceCommands.ADD_LINK, { isEnabled: ready, execute: () => this.openSettings('links', { addLink: true }) });
+        registry.registerCommand(BrokspaceCommands.SYNC_LINKS, { isEnabled: ready, execute: () => this.syncLinks() });
+        registry.registerCommand(BrokspaceCommands.CONNECT_AGENTS, {
+            isEnabled: ready,
+            execute: () => this.runInOutput(nls.localize('brokspace/run/connectAgents', 'Connecting coding agents'), ['setup', 'agents', '--yes'],
+                nls.localize('brokspace/run/connectAgentsDone', 'Coding agents connected: they can search and remember through Brokspace.')),
+        });
+        registry.registerCommand(BrokspaceCommands.SHOW_LOGS, {
+            isEnabled: ready, execute: () => this.runInOutput(nls.localize('brokspace/run/logs', 'Brokspace logs'), ['logs']),
+        });
+        registry.registerCommand(BrokspaceCommands.ADD_PROVIDER, { isEnabled: ready, execute: () => this.addProvider() });
     }
 
     override registerMenus(menus: MenuModelRegistry): void {
@@ -280,15 +319,21 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
         group('1_agent', BrokspaceCommands.ASK, BrokspaceCommands.TOGGLE_AGENT, BrokspaceCommands.REVIEW, BrokspaceCommands.REVIEW_STAGED,
             BrokspaceCommands.COMMIT_MESSAGE, BrokspaceCommands.RUN_SKILL);
         group('2_search', BrokspaceCommands.SEARCH, BrokspaceCommands.SHOW);
-        group('3_shards', BrokspaceCommands.INSTALL_SHARD, BrokspaceCommands.NEW_SHARD, BrokspaceCommands.BROWSE_SHARDS);
-        group('4_service', BrokspaceCommands.START, BrokspaceCommands.STOP, BrokspaceCommands.RESTART, BrokspaceCommands.REINDEX);
-        group('5_workspace', BrokspaceCommands.SETUP, BrokspaceCommands.EXPORT_SKILLS, BrokspaceCommands.DOCTOR);
+        group('3_memory', BrokspaceCommands.REMEMBER, BrokspaceCommands.SHOW_MEMORY, BrokspaceCommands.ADD_LINK, BrokspaceCommands.SYNC_LINKS);
+        group('4_shards', BrokspaceCommands.INSTALL_SHARD, BrokspaceCommands.NEW_SHARD, BrokspaceCommands.BROWSE_SHARDS);
+        group('5_service', BrokspaceCommands.START, BrokspaceCommands.STOP, BrokspaceCommands.RESTART, BrokspaceCommands.REINDEX);
+        group('6_workspace', BrokspaceCommands.SETTINGS, BrokspaceCommands.SETUP, BrokspaceCommands.CONNECT_AGENTS, BrokspaceCommands.EXPORT_SKILLS,
+            BrokspaceCommands.DOCTOR);
+        menus.registerMenuAction([...EDITOR_CONTEXT_MENU, 'z_brokspace'], { commandId: BrokspaceCommands.REMEMBER_SELECTION.id });
     }
 
     override registerKeybindings(keybindings: KeybindingRegistry): void {
         super.registerKeybindings(keybindings);
         keybindings.registerKeybinding({ command: BrokspaceCommands.TOGGLE_AGENT.id, keybinding: 'ctrlcmd+shift+a' });
         keybindings.registerKeybinding({ command: BrokspaceCommands.SEARCH.id, keybinding: 'ctrlcmd+alt+f' });
+        keybindings.registerKeybinding({ command: BrokspaceCommands.REMEMBER.id, keybinding: 'ctrlcmd+alt+m' });
+        keybindings.registerKeybinding({ command: BrokspaceCommands.REMEMBER_SELECTION.id, keybinding: 'ctrlcmd+alt+m', when: 'editorHasSelection' });
+        keybindings.registerKeybinding({ command: BrokspaceCommands.SETTINGS.id, keybinding: 'ctrlcmd+alt+,' });
     }
 
     registerToolbarItems(toolbar: TabBarToolbarRegistry): void {
@@ -303,7 +348,19 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
         });
         toolbar.registerItem({
             id: 'brokspace.overview.refresh', command: BrokspaceCommands.REFRESH.id, tooltip: BrokspaceCommands.REFRESH.label,
-            icon: 'codicon codicon-refresh', isVisible: (widget: Widget) => part(widget, BrokspaceOverviewWidget),
+            icon: 'codicon codicon-refresh', priority: 1, isVisible: (widget: Widget) => part(widget, BrokspaceOverviewWidget),
+        });
+        toolbar.registerItem({
+            id: 'brokspace.overview.settings', command: BrokspaceCommands.SETTINGS.id, tooltip: BrokspaceCommands.SETTINGS.label,
+            icon: 'codicon codicon-settings-gear', priority: 2, isVisible: (widget: Widget) => part(widget, BrokspaceOverviewWidget),
+        });
+        toolbar.registerItem({
+            id: 'brokspace.memory.add', command: BrokspaceCommands.REMEMBER.id, tooltip: BrokspaceCommands.REMEMBER.label,
+            icon: 'codicon codicon-add', priority: 0, isVisible: (widget: Widget) => part(widget, BrokspaceMemoryWidget),
+        });
+        toolbar.registerItem({
+            id: 'brokspace.memory.manage', command: BrokspaceCommands.SHOW_MEMORY.id, tooltip: BrokspaceCommands.SHOW_MEMORY.label,
+            icon: 'codicon codicon-settings-gear', priority: 1, isVisible: (widget: Widget) => part(widget, BrokspaceMemoryWidget),
         });
         toolbar.registerItem({
             id: 'brokspace.shards.install', command: BrokspaceCommands.INSTALL_SHARD.id, tooltip: BrokspaceCommands.INSTALL_SHARD.label,
@@ -356,6 +413,128 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
         this.focusRestore = { leftExpanded: this.shell.isExpanded('left'), rightWidth: right?.offsetWidth ?? 400 };
         await this.shell.collapsePanel('left');
         this.shell.resize(Math.round(window.innerWidth * AGENT_FOCUS_WIDTH), 'right');
+    }
+
+    /** Opens Brokspace settings in the editor area, at `section`. */
+    protected async openSettings(section: SettingsSection, options: { addLink?: boolean; addMemory?: boolean } = {}): Promise<void> {
+        const widget = await this.widgets.getOrCreateWidget<BrokspaceSettingsWidget>(BrokspaceSettingsWidget.ID);
+        widget.showSection(section, options);
+        if (!widget.isAttached) {
+            await this.shell.addWidget(widget, { area: 'main' });
+        }
+        await this.shell.activateWidget(widget.id);
+    }
+
+    /** Remember something: a title, then its kind and who sees it (Enter keeps the defaults). */
+    protected async remember(initial?: { title?: string; body?: string }): Promise<void> {
+        const title = await this.quickInput.input({
+            prompt: nls.localize('brokspace/prompt/rememberTitle', 'What should Brokspace remember? One line: a decision, a fact, a convention.'),
+            placeHolder: nls.localize('brokspace/prompt/rememberPlaceholder', 'Orders are idempotent per cart id'),
+            value: initial?.title,
+        });
+        if (!title?.trim()) {
+            return;
+        }
+        const kinds: MemoryKind[] = ['note', 'decision', 'fact', 'handoff'];
+        const kind = await this.quickInput.showQuickPick(kinds.map(id => ({ id, label: kindLabel(id) })),
+            { placeholder: nls.localize('brokspace/prompt/rememberKind', 'What is it?') });
+        if (!kind) {
+            return;
+        }
+        const scope = await this.quickInput.showQuickPick(MEMORY_SCOPES.map(id => ({ id, label: scopeDescription(id) })),
+            { placeholder: nls.localize('brokspace/prompt/rememberScope', 'Who should it be for?') });
+        if (!scope) {
+            return;
+        }
+        try {
+            const saved = await this.memory.save({
+                title, body: initial?.body, kind: kind.id as MemoryKind, scope: scope.id as MemoryScope,
+            });
+            if (saved) {
+                this.messages.info(nls.localize('brokspace/run/remembered', 'Remembered: {0}', saved.title));
+            }
+        } catch (error) {
+            this.messages.error(nls.localize('brokspace/run/rememberFailed', 'Brokspace could not remember it: {0}',
+                error instanceof Error ? error.message : String(error)));
+        }
+    }
+
+    /** Remembers the selected code with where it is. */
+    protected async rememberSelection(): Promise<void> {
+        const editor = this.editors.currentEditor?.editor;
+        const root = this.model.rootUri;
+        if (!editor) {
+            return;
+        }
+        const { start, end } = editor.selection;
+        const code = editor.document.getText(editor.selection).trim();
+        const relative = root?.relative(editor.uri)?.toString() ?? editor.uri.path.base;
+        const where = `${relative}:${start.line + 1}-${end.line + 1}`;
+        const body = code ? `\`${where}\`\n\n\`\`\`${editor.document.languageId}\n${code}\n\`\`\`` : `\`${where}\``;
+        await this.remember({ title: '', body });
+    }
+
+    protected async pickMemory(): Promise<Memory | undefined> {
+        await this.memory.ensureLoaded();
+        const pick = await this.quickInput.showQuickPick(this.memory.memories.map(memory => ({
+            label: memory.title, description: `${kindLabel(memory.kind)} · ${memory.scope}`, memory,
+        })), { placeholder: nls.localize('brokspace/prompt/pickMemory', 'Choose a memory') });
+        return pick?.memory;
+    }
+
+    protected async syncLinks(): Promise<void> {
+        const root = this.model.root;
+        if (!root) {
+            return;
+        }
+        const progress = await this.messages.showProgress({ text: nls.localize('brokspace/run/syncLinks', 'Syncing linked workspaces…') });
+        try {
+            const failed = (await this.service.syncLinks(root)).filter(result => result.error);
+            if (failed.length) {
+                this.messages.warn(failed.map(result => `${result.name}: ${result.error}`).join('\n'));
+            } else {
+                this.messages.info(nls.localize('brokspace/run/syncLinksDone', 'Linked workspaces are up to date.'));
+            }
+        } catch (error) {
+            this.messages.error(error instanceof Error ? error.message : String(error));
+        } finally {
+            progress.cancel();
+            this.model.refresh();
+        }
+    }
+
+    /** A new OpenAI-compatible provider in brok.yml. */
+    protected async addProvider(): Promise<void> {
+        const root = this.model.root;
+        const name = await this.quickInput.input({
+            prompt: nls.localize('brokspace/prompt/providerName', 'Name of the provider (letters, digits, dashes)'), placeHolder: 'openrouter',
+            validateInput: async value => /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(value)
+                ? undefined : nls.localize('brokspace/prompt/providerNameInvalid', 'Use letters, digits, dashes and underscores.'),
+        });
+        if (!root || !name) {
+            return;
+        }
+        const baseUrl = await this.quickInput.input({
+            prompt: nls.localize('brokspace/prompt/providerUrl', 'Base URL of its OpenAI-compatible API, up to /v1'),
+            value: 'http://localhost:11434/v1',
+        });
+        const model = baseUrl && await this.quickInput.input({
+            prompt: nls.localize('brokspace/prompt/providerModel', 'Model name'), placeHolder: 'qwen2.5-coder:7b',
+        });
+        if (!baseUrl || !model) {
+            return;
+        }
+        const keyEnv = await this.quickInput.input({
+            prompt: nls.localize('brokspace/prompt/providerKey', 'Environment variable with its API key (leave empty for local servers)'),
+            placeHolder: 'OPENROUTER_API_KEY',
+        });
+        try {
+            await this.service.setConfig(root, `llm.providers.${name}`, { base_url: baseUrl, model, ...(keyEnv ? { api_key_env: keyEnv } : {}) });
+            this.messages.info(nls.localize('brokspace/run/providerAdded', 'Added {0}. Make it the default in Brokspace settings.', name));
+        } catch (error) {
+            this.messages.error(error instanceof Error ? error.message : String(error));
+        }
+        this.model.refresh();
     }
 
     protected async pickShard(): Promise<string | undefined> {
@@ -477,4 +656,14 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
         }
         await this.model.refresh();
     }
+}
+
+const SECTIONS: SettingsSection[] = ['overview', 'model', 'search', 'memory', 'links', 'agents', 'diagnostics'];
+
+function isSection(value: unknown): value is SettingsSection {
+    return typeof value === 'string' && (SECTIONS as string[]).includes(value);
+}
+
+function isMemory(value: unknown): value is Memory {
+    return typeof value === 'object' && !!value && typeof (value as Memory).id === 'string' && typeof (value as Memory).scope === 'string';
 }

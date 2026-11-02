@@ -11,8 +11,8 @@ import * as path from 'path';
 import * as readline from 'readline';
 import { injectable } from '@theia/core/shared/inversify';
 import {
-    AnswerDone, AnswerRequest, BrokClient, BrokInfo, BrokService, BrokStatus, CommandResult, SearchHit, ShardDetails, ShardManifest,
-    SkillInfo
+    AnswerDone, AnswerRequest, BrokClient, BrokConfig, BrokInfo, BrokService, BrokStatus, CommandResult, LinkInput, Memory, MemoryInput,
+    MemoryScope, SearchHit, ShardDetails, ShardManifest, SkillInfo
 } from '../common/brok-protocol';
 
 const EXE = process.platform === 'win32' ? 'brok.exe' : 'brok';
@@ -148,6 +148,68 @@ export class BrokServiceImpl implements BrokService {
         return stdout.trim();
     }
 
+    async memories(root: string): Promise<Memory[]> {
+        return this.json<Memory[]>(root, ['memory', 'list', '--json']);
+    }
+
+    async searchMemories(root: string, query: string, limit: number): Promise<SearchHit[]> {
+        return this.json<SearchHit[]>(root, ['memory', 'search', '--json', '-n', String(limit), '--', query]);
+    }
+
+    async saveMemory(root: string, memory: MemoryInput): Promise<Memory | undefined> {
+        const args = ['memory', 'add', '--json', '--stdin', '--kind', memory.kind ?? 'note', '--scope', memory.scope ?? 'private',
+            '--source', memory.source ?? 'ide'];
+        if (memory.id) {
+            args.push('--id', memory.id);
+        }
+        for (const tag of memory.tags ?? []) {
+            args.push('--tag', tag);
+        }
+        args.push('--', memory.title);
+        const { stdout } = await this.exec(root, args, memory.body ?? '');
+        const saved = JSON.parse(stdout) as Memory | { saved: false };
+        return 'id' in saved ? saved : undefined;
+    }
+
+    async forgetMemory(root: string, id: string, scope?: MemoryScope): Promise<void> {
+        await this.exec(root, ['memory', 'forget', '--json', ...(scope ? ['--scope', scope] : []), '--', id]);
+    }
+
+    async config(root: string): Promise<BrokConfig> {
+        return this.json<BrokConfig>(root, ['config', 'get', '--json']);
+    }
+
+    async setConfig(root: string, key: string, value: unknown): Promise<void> {
+        // JSON is YAML: strings stay strings ("true" is not a boolean), lists and maps keep their shape.
+        await this.exec(root, ['config', 'set', '--', key, JSON.stringify(value)]);
+    }
+
+    async unsetConfig(root: string, key: string): Promise<void> {
+        await this.exec(root, ['config', 'unset', '--', key]);
+    }
+
+    async addLink(root: string, link: LinkInput): Promise<void> {
+        const args = ['link', 'add', '--json'];
+        if (link.branch) {
+            args.push('--branch', link.branch);
+        }
+        if (link.description) {
+            args.push('--description', link.description);
+        }
+        if (link.memory === false) {
+            args.push('--no-memory');
+        }
+        await this.exec(root, [...args, '--', link.name, link.target]);
+    }
+
+    async removeLink(root: string, name: string): Promise<void> {
+        await this.exec(root, ['link', 'remove', '--json', '--', name]);
+    }
+
+    async syncLinks(root: string, names: string[] = []): Promise<{ name: string; error?: string }[]> {
+        return this.json(root, ['link', 'sync', '--json', ...(names.length ? ['--', ...names] : [])]);
+    }
+
     async run(root: string, args: string[]): Promise<CommandResult> {
         return new Promise(resolve => {
             execFile(this.executable, args, { cwd: root, env: this.env(), maxBuffer: 32 * 1024 * 1024, windowsHide: true },
@@ -163,9 +225,10 @@ export class BrokServiceImpl implements BrokService {
         return JSON.parse(stdout) as T;
     }
 
-    protected exec(cwd: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
+    /** Runs brok; `input` goes to its stdin. */
+    protected exec(cwd: string, args: string[], input?: string): Promise<{ stdout: string; stderr: string }> {
         return new Promise((resolve, reject) => {
-            execFile(this.executable, args, { cwd, env: this.env(), maxBuffer: 32 * 1024 * 1024, windowsHide: true },
+            const child = execFile(this.executable, args, { cwd, env: this.env(), maxBuffer: 32 * 1024 * 1024, windowsHide: true },
                 (error, stdout, stderr) => {
                     if (error) {
                         reject(new Error(cleanError(stderr) || error.message));
@@ -173,6 +236,9 @@ export class BrokServiceImpl implements BrokService {
                         resolve({ stdout, stderr });
                     }
                 });
+            if (input !== undefined) {
+                child.stdin?.end(input);
+            }
         });
     }
 

@@ -11,8 +11,10 @@ import {
 import { LanguageModelRequirement } from '@theia/ai-core/lib/common/language-model';
 import { AgentSpecificVariables, PromptVariantSet } from '@theia/ai-core/lib/common/agent';
 import { nls } from '@theia/core/lib/common/nls';
+import { URI } from '@theia/core/lib/common/uri';
 import { inject, injectable } from '@theia/core/shared/inversify';
 import { AnswerRequest, BrokService, ConversationTurn, SearchHit, SourceRef } from '../common/brok-protocol';
+import { BrokspaceMemory, resolveHitPath, SessionTurn } from './brokspace-memory';
 import { BrokClientImpl, BrokspaceModel } from './brokspace-model';
 
 export const BROKSPACE_AGENT_ID = 'Brokspace';
@@ -21,8 +23,10 @@ export const BROKSPACE_AGENT_ID = 'Brokspace';
  * The Brokspace chat agent, the IDE's one way to an LLM: every request goes
  * through brok, which routes it to the provider set in brok.yml (Ollama,
  * LM Studio or a hosted OpenAI-compatible API) and grounds it in the
- * workspace index. Without a reachable LLM, questions are answered with
- * what the local index finds. Theia AI needs no language model for it.
+ * workspace index, the linked workspaces and the memories. Without a
+ * reachable LLM, questions are answered with what the local index finds.
+ * Theia AI needs no language model for it. Each answered question updates
+ * the session's memory, so later sessions start from it.
  */
 @injectable()
 export class BrokspaceChatAgent implements ChatAgent {
@@ -44,6 +48,7 @@ export class BrokspaceChatAgent implements ChatAgent {
     @inject(BrokService) protected readonly service: BrokService;
     @inject(BrokClientImpl) protected readonly client: BrokClientImpl;
     @inject(BrokspaceModel) protected readonly model: BrokspaceModel;
+    @inject(BrokspaceMemory) protected readonly memory: BrokspaceMemory;
 
     async invoke(request: MutableChatRequestModel): Promise<void> {
         const response = request.response;
@@ -80,9 +85,12 @@ export class BrokspaceChatAgent implements ChatAgent {
                 response.setLanguageModel(done.provider ? `${done.provider}/${done.model}` : done.model);
             }
             if (done.sources.length) {
-                response.response.addContent(new MarkdownChatResponseContentImpl(sourcesMarkdown(done.sources, this.model.rootUri?.toString())));
+                response.response.addContent(new MarkdownChatResponseContentImpl(sourcesMarkdown(done.sources, this.model.rootUri)));
             }
             response.complete();
+            if (answer.kind === 'ask') {
+                this.rememberSession(request);
+            }
         } catch (error) {
             const err = error instanceof Error ? error : new Error(String(error));
             response.updateProgressMessage({ id: progress.id, status: 'failed' });
@@ -119,11 +127,46 @@ export class BrokspaceChatAgent implements ChatAgent {
             : nls.localize('brokspace/agent/localOnly', 'No LLM is set up, so here is what the local index found. Run `brok setup llm` to get written answers.');
         const body = hits.length
             ? sourcesMarkdown(hits.map(hit => ({ path: hit.path, start_line: hit.start_line, end_line: hit.end_line, symbol: hit.symbol ?? undefined })),
-                this.model.rootUri?.toString())
+                this.model.rootUri)
             : `\n\n${nls.localize('brokspace/view/noResults', 'No results. Try other words, or check that the index is up to date.')}`;
         response.response.addContent(new MarkdownChatResponseContentImpl(`${intro}${body}`));
         response.complete();
+        this.rememberSession(request);
     }
+
+    /** Saves the session as a memory, in the background: a failure never reaches the chat. */
+    protected rememberSession(request: MutableChatRequestModel): void {
+        this.memory.saveSession(request.session.id, sessionTurns(request))
+            .catch(error => console.warn('Brokspace: the session memory was not saved', error));
+    }
+}
+
+/** The questions of a session up to `request`, with their answers (sources apart). */
+export function sessionTurns(request: MutableChatRequestModel): SessionTurn[] {
+    const turns: SessionTurn[] = [];
+    for (const earlier of request.session.getRequests()) {
+        const text = earlier.response.response.asString();
+        const question = stripMention(earlier.request.text);
+        // Reviews and skills are not conversation.
+        if (earlier.response.isComplete && text.trim() && !question.startsWith('/')) {
+            turns.push({ question, ...splitSources(text) });
+        }
+        if (earlier.id === request.id) {
+            break;
+        }
+    }
+    return turns;
+}
+
+/** An answer, and the `path:start-end` of the sources block appended to it. */
+export function splitSources(text: string): { answer: string; sources: string[] } {
+    const marker = `**${nls.localize('brokspace/agent/sources', 'Sources')}**`;
+    const at = text.lastIndexOf(marker);
+    if (at < 0) {
+        return { answer: text.trim(), sources: [] };
+    }
+    const sources = [...text.slice(at).matchAll(/<code>([^<]+)<\/code>/g)].map(match => unescapeHtml(match[1]));
+    return { answer: text.slice(0, at).trim(), sources };
 }
 
 /** The LLM could not be reached or is not configured: worth answering from the index instead. */
@@ -190,11 +233,12 @@ function progressText(request: AnswerRequest): string {
  * anchors: the chat's markdown parser rejects `file:` links, while its HTML
  * links go through Theia's opener, which reads `#L<line>`.
  */
-export function sourcesMarkdown(sources: SourceRef[], rootUri: string | undefined): string {
+export function sourcesMarkdown(sources: SourceRef[], rootUri: URI | undefined): string {
     const items = sources.map(source => {
         const label = `<code>${escapeHtml(`${source.path}:${source.start_line}-${source.end_line}`)}</code>`;
         const symbol = source.symbol ? ` · ${escapeHtml(source.symbol)}` : '';
-        const target = rootUri ? `${rootUri.replace(/\/$/, '')}/${encodePath(source.path)}#L${source.start_line}` : undefined;
+        // Paths may leave the workspace: linked workspaces (../checkout/...) and global memories (absolute).
+        const target = rootUri ? `${resolveHitPath(rootUri, source.path).toString()}#L${source.start_line}` : undefined;
         return target ? `- <a href="${escapeHtml(target)}">${label}</a>${symbol}` : `- ${label}${symbol}`;
     });
     const title = nls.localize('brokspace/agent/sources', 'Sources');
@@ -205,8 +249,8 @@ function escapeHtml(text: string): string {
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function encodePath(relative: string): string {
-    return relative.split(/[\\/]/).map(encodeURIComponent).join('/');
+function unescapeHtml(text: string): string {
+    return text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 }
 
 /** Turns common failures into the next step to take. */
