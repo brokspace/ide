@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 import '../../src/browser/style/index.css';
+import '../../src/browser/style/settings.css';
 
 import { Agent } from '@theia/ai-core/lib/common/agent';
 import { ChatAgent } from '@theia/ai-chat/lib/common/chat-agents';
@@ -18,8 +19,10 @@ import { ContainerModule, injectable, interfaces } from '@theia/core/shared/inve
 import { BROK_SERVICE_PATH, BrokService } from '../common/brok-protocol';
 import { BrokspaceChatAgent } from './brokspace-chat-agent';
 import { BROKSPACE_VIEW_CONTAINER_ID, BROKSPACE_VIEW_TITLE, BrokspaceContribution } from './brokspace-contribution';
+import { BrokspaceMemory } from './brokspace-memory';
 import { BrokClientImpl, BrokspaceModel } from './brokspace-model';
-import { BrokspaceOverviewWidget, BrokspaceShardsWidget, BrokspaceSkillsWidget } from './brokspace-widget';
+import { BrokspaceSettingsWidget } from './brokspace-settings-widget';
+import { BrokspaceMemoryWidget, BrokspaceOverviewWidget, BrokspaceShardsWidget, BrokspaceSkillsWidget } from './brokspace-widget';
 
 /**
  * Theia names chat sessions with a language model of its own; Brokspace
@@ -43,12 +46,15 @@ export default new ContainerModule((bind, _unbind, isBound, rebind) => {
         ServiceConnectionProvider.createProxy<BrokService>(ctx.container, BROK_SERVICE_PATH, ctx.container.get(BrokClientImpl))
     ).inSingletonScope();
     bind(BrokspaceModel).toSelf().inSingletonScope();
+    bind(BrokspaceMemory).toSelf().inSingletonScope();
 
-    // The Brokspace view: Overview, Shards and Skills, each collapsible.
+    // The Brokspace view: Overview, Memory, Shards and Skills, each collapsible.
     const parts: [string, interfaces.Newable<object>][] = [
         [BrokspaceOverviewWidget.ID, BrokspaceOverviewWidget],
+        [BrokspaceMemoryWidget.ID, BrokspaceMemoryWidget],
         [BrokspaceShardsWidget.ID, BrokspaceShardsWidget],
         [BrokspaceSkillsWidget.ID, BrokspaceSkillsWidget],
+        [BrokspaceSettingsWidget.ID, BrokspaceSettingsWidget],
     ];
     for (const [id, part] of parts) {
         bind(part).toSelf();
@@ -61,8 +67,9 @@ export default new ContainerModule((bind, _unbind, isBound, rebind) => {
             view.setTitleOptions({ ...BROKSPACE_VIEW_TITLE, label: nls.localize('brokspace/view/title', 'Brokspace') });
             const widgets = container.get(WidgetManager);
             view.addWidget(await widgets.getOrCreateWidget(BrokspaceOverviewWidget.ID), { order: 0, weight: 2, canHide: false, initiallyCollapsed: false });
-            view.addWidget(await widgets.getOrCreateWidget(BrokspaceShardsWidget.ID), { order: 1, weight: 2, canHide: true, initiallyCollapsed: false });
-            view.addWidget(await widgets.getOrCreateWidget(BrokspaceSkillsWidget.ID), { order: 2, weight: 1, canHide: true, initiallyCollapsed: true });
+            view.addWidget(await widgets.getOrCreateWidget(BrokspaceMemoryWidget.ID), { order: 1, weight: 2, canHide: true, initiallyCollapsed: false });
+            view.addWidget(await widgets.getOrCreateWidget(BrokspaceShardsWidget.ID), { order: 2, weight: 2, canHide: true, initiallyCollapsed: true });
+            view.addWidget(await widgets.getOrCreateWidget(BrokspaceSkillsWidget.ID), { order: 3, weight: 1, canHide: true, initiallyCollapsed: true });
             return view;
         },
     })).inSingletonScope();
