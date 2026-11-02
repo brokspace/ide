@@ -17,9 +17,25 @@
 }
 
 .brokspace-view-icon {
-    /* Same optical size as the codicons beside it in the activity bar. */
-    -webkit-mask-size: auto var(--bk-activity-icon, 20px);
-    mask-size: auto var(--bk-activity-icon, 20px);
+    -webkit-mask-size: auto calc(var(--bk-icon, 16px) * 0.875);
+    mask-size: auto calc(var(--bk-icon, 16px) * 0.875);
+}
+
+/* In the activity bar, Theia sizes masks by width (mask-size: <icon size>),
+   which makes the tall mark much higher than the codicons beside it. Size it
+   by height instead: the height a codicon glyph takes in its em box. */
+.lm-TabBar.theia-app-sides .lm-TabBar-tabIcon.brokspace-view-icon {
+    -webkit-mask-size: auto calc(var(--theia-private-sidebar-icon-size, 24px) * 0.875);
+    mask-size: auto calc(var(--theia-private-sidebar-icon-size, 24px) * 0.875);
+}
+
+.bk-more {
+    margin: var(--bk-space-1, 4px) 0 0 calc(var(--bk-space-3, 12px) + var(--bk-icon, 16px) + var(--bk-space-2, 8px));
+}
+
+.bk-hit-head .codicon {
+    flex: none;
+    color: var(--bk-accent, var(--theia-focusBorder));
 }
 
 .codicon-brokspace-mark {

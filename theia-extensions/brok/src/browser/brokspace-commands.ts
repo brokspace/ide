@@ -77,4 +77,34 @@ export namespace BrokspaceCommands {
     export const REFRESH = Command.toLocalizedCommand({
         id: 'brokspace.refresh', category: CATEGORY, label: 'Refresh Status', iconClass: 'codicon codicon-refresh'
     }, 'brokspace/commands/refresh', CATEGORY_KEY);
+    export const SETTINGS = Command.toLocalizedCommand({
+        id: 'brokspace.settings', category: CATEGORY, label: 'Settings', iconClass: 'codicon codicon-settings-gear'
+    }, 'brokspace/commands/settings', CATEGORY_KEY);
+    export const REMEMBER = Command.toLocalizedCommand({
+        id: 'brokspace.remember', category: CATEGORY, label: 'Remember…', iconClass: 'codicon codicon-add'
+    }, 'brokspace/commands/remember', CATEGORY_KEY);
+    export const REMEMBER_SELECTION = Command.toLocalizedCommand({
+        id: 'brokspace.rememberSelection', category: CATEGORY, label: 'Remember Selection…'
+    }, 'brokspace/commands/rememberSelection', CATEGORY_KEY);
+    export const SHOW_MEMORY = Command.toLocalizedCommand({
+        id: 'brokspace.showMemory', category: CATEGORY, label: 'Manage Memory', iconClass: 'codicon codicon-library'
+    }, 'brokspace/commands/showMemory', CATEGORY_KEY);
+    export const FORGET_MEMORY = Command.toLocalizedCommand({
+        id: 'brokspace.forgetMemory', category: CATEGORY, label: 'Forget Memory…', iconClass: 'codicon codicon-trash'
+    }, 'brokspace/commands/forgetMemory', CATEGORY_KEY);
+    export const ADD_LINK = Command.toLocalizedCommand({
+        id: 'brokspace.addLink', category: CATEGORY, label: 'Link a Workspace…', iconClass: 'codicon codicon-link'
+    }, 'brokspace/commands/addLink', CATEGORY_KEY);
+    export const CONNECT_AGENTS = Command.toLocalizedCommand({
+        id: 'brokspace.connectAgents', category: CATEGORY, label: 'Connect Coding Agents', iconClass: 'codicon codicon-plug'
+    }, 'brokspace/commands/connectAgents', CATEGORY_KEY);
+    export const SHOW_LOGS = Command.toLocalizedCommand({
+        id: 'brokspace.showLogs', category: CATEGORY, label: 'Show Logs', iconClass: 'codicon codicon-output'
+    }, 'brokspace/commands/showLogs', CATEGORY_KEY);
+    export const ADD_PROVIDER = Command.toLocalizedCommand({
+        id: 'brokspace.addProvider', category: CATEGORY, label: 'Add LLM Provider…', iconClass: 'codicon codicon-add'
+    }, 'brokspace/commands/addProvider', CATEGORY_KEY);
+    export const SYNC_LINKS = Command.toLocalizedCommand({
+        id: 'brokspace.syncLinks', category: CATEGORY, label: 'Sync Linked Workspaces', iconClass: 'codicon codicon-sync'
+    }, 'brokspace/commands/syncLinks', CATEGORY_KEY);
 }

@@ -11,8 +11,9 @@ import { codicon, Message } from '@theia/core/lib/browser/widgets/widget';
 import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
 import { OpenerService, open } from '@theia/core/lib/browser/opener-service';
 import { inject, injectable, postConstruct } from '@theia/core/shared/inversify';
-import { BrokService, SearchHit, ShardDetails, ShardInfo, SkillInfo } from '../common/brok-protocol';
+import { BrokService, MINIMUM_BROK_VERSION, SearchHit, ShardDetails, ShardInfo, SkillInfo } from '../common/brok-protocol';
 import { BrokspaceCommands } from './brokspace-commands';
+import { BrokspaceMemory, memoryUri, resolveHitPath } from './brokspace-memory';
 import { BrokspaceModel, BrokspaceState } from './brokspace-model';
 
 type Ready = Extract<BrokspaceState, { kind: 'ready' }>;
@@ -103,7 +104,7 @@ export class BrokspaceOverviewWidget extends BrokspacePart {
                     nls.localize('brokspace/view/installBrok', 'Install brok'), BrokspaceCommands.INSTALL_HELP.id);
             case 'outdated':
                 return this.setupCard('warning', nls.localize('brokspace/view/outdatedTitle', 'brok {0} is too old', state.info.version ?? ''),
-                    nls.localize('brokspace/view/outdatedText', 'This IDE needs brok 0.2.4 or newer. Run "brok upgrade" in a terminal.'),
+                    nls.localize('brokspace/view/outdatedText', 'This IDE needs brok {0} or newer. Run "brok upgrade" in a terminal.', MINIMUM_BROK_VERSION),
                     nls.localize('brokspace/view/openTerminal', 'Open Terminal'), 'terminal:new');
             case 'not-initialized':
                 return this.setupCard('rocket', nls.localize('brokspace/view/setupTitle', 'Set up Brokspace here'),
@@ -179,6 +180,7 @@ export class BrokspaceOverviewWidget extends BrokspacePart {
                 {this.hits.map(hit => <li key={`${hit.path}:${hit.start_line}`} className='bk-hit' tabIndex={0} title={hit.content}
                     onClick={() => this.openHit(hit)} onKeyDown={e => e.key === 'Enter' && this.openHit(hit)}>
                     <div className='bk-hit-head'>
+                        {hit.kind === 'memory' && <span className={codicon('library')} title={nls.localize('brokspace/view/memory', 'Memory')} />}
                         <span className='bk-hit-symbol'>{hit.symbol || hit.kind}</span>
                         <span className='bk-hit-path'>{hit.path}:{hit.start_line}</span>
                     </div>
@@ -229,7 +231,7 @@ export class BrokspaceOverviewWidget extends BrokspacePart {
             return;
         }
         const line = Math.max(0, hit.start_line - 1);
-        open(this.opener, root.resolve(hit.path), {
+        open(this.opener, resolveHitPath(root, hit.path), {
             selection: { start: { line, character: 0 }, end: { line: Math.max(line, hit.end_line - 1), character: 0 } },
         });
     }
@@ -444,4 +446,104 @@ function shardDot(shard: ShardInfo): string {
 function firstLine(content: string): string {
     // The first line that says something: skip blanks and comment markers.
     return content.split('\n').map(line => line.trim()).find(line => line && !/^(\/\/|\/\*|\*)/.test(line)) ?? '';
+}
+
+/** Recent memories: open one, forget one, remember something new. */
+@injectable()
+export class BrokspaceMemoryWidget extends BrokspacePart {
+
+    static readonly ID = 'brokspace-memory';
+    static readonly SHOWN = 30;
+
+    @inject(BrokspaceMemory) protected readonly memory: BrokspaceMemory;
+    @inject(OpenerService) protected readonly opener: OpenerService;
+
+    @postConstruct()
+    protected override init(): void {
+        this.id = BrokspaceMemoryWidget.ID;
+        this.title.label = nls.localize('brokspace/view/memory', 'Memory');
+        this.toDispose.push(this.memory.onDidChange(() => this.update()));
+        super.init();
+    }
+
+    protected override onAfterShow(msg: Message): void {
+        super.onAfterShow(msg);
+        this.memory.ensureLoaded();
+    }
+
+    protected override onStateChange(state: BrokspaceState): void {
+        if (state.kind === 'ready' && this.isVisible) {
+            this.memory.ensureLoaded();
+        }
+        super.onStateChange(state);
+    }
+
+    protected render(): React.ReactNode {
+        const state = this.model.state;
+        if (state.kind !== 'ready') {
+            return this.empty(nls.localize('brokspace/view/memoryUnavailable', 'Memories appear once Brokspace is set up in this folder.'));
+        }
+        if (state.status.memory?.enabled === false) {
+            return this.empty(nls.localize('brokspace/view/memoryOff', 'Memory is off in this workspace.'),
+                [{ label: BrokspaceCommands.SETTINGS.label ?? '', command: BrokspaceCommands.SHOW_MEMORY.id }]);
+        }
+        if (!this.memory.isLoaded) {
+            return <div className='bk-empty'><p>{nls.localize('brokspace/view/loading', 'Loading…')}</p></div>;
+        }
+        const memories = this.memory.memories;
+        if (!memories.length) {
+            return this.empty(nls.localize('brokspace/view/noMemories',
+                'Nothing remembered yet. Decisions, facts and your chats with the agent show up here, and in every answer.'),
+                [{ label: BrokspaceCommands.REMEMBER.label ?? '', command: BrokspaceCommands.REMEMBER.id, primary: true }]);
+        }
+        const shown = memories.slice(0, BrokspaceMemoryWidget.SHOWN);
+        return <ul className='bk-list'>
+            {shown.map(memory => <li key={`${memory.scope}:${memory.id}`} className='bk-item'>
+                <div className='bk-row' tabIndex={0} title={`${memory.title}\n${memory.updated.slice(0, 10)} · ${memory.scope}`}
+                    onClick={() => open(this.opener, memoryUri(memory))} onKeyDown={e => e.key === 'Enter' && open(this.opener, memoryUri(memory))}>
+                    <span className={codicon(kindIcon(memory.kind))} />
+                    <span className='bk-row-name'>{memory.title}</span>
+                    <span className='bk-row-meta'>{relativeDate(memory.updated)}</span>
+                    <span className='bk-row-actions'>
+                        {this.iconButton('trash', nls.localize('brokspace/settings/forget', 'Forget'),
+                            () => this.run(BrokspaceCommands.FORGET_MEMORY.id, memory))}
+                    </span>
+                </div>
+            </li>)}
+            {memories.length > shown.length && <li className='bk-item'>
+                <button className='bk-link bk-more' onClick={() => this.run(BrokspaceCommands.SHOW_MEMORY.id)}>
+                    {nls.localize('brokspace/view/moreMemories', '{0} more…', memories.length - shown.length)}
+                </button>
+            </li>}
+        </ul>;
+    }
+}
+
+export function kindIcon(kind: string): string {
+    switch (kind) {
+        case 'decision': return 'law';
+        case 'fact': return 'lightbulb';
+        case 'session': return 'comment-discussion';
+        case 'handoff': return 'debug-step-over';
+        case 'link': return 'link';
+        default: return 'note';
+    }
+}
+
+/** `today`, `3d`, `2w`, or the date. */
+function relativeDate(iso: string): string {
+    const days = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
+    if (!Number.isFinite(days)) {
+        return '';
+    }
+    if (days < 1) {
+        return nls.localize('brokspace/view/today', 'today');
+    }
+    if (days < 14) {
+        return nls.localize('brokspace/view/daysAgo', '{0}d', days);
+    }
+    if (days < 60) {
+        return nls.localize('brokspace/view/weeksAgo', '{0}w', Math.floor(days / 7));
+    }
+    return iso.slice(0, 10);
 }

@@ -33,13 +33,17 @@ export type BrokspaceState =
 
 /**
  * What the sidebar and the status bar show: brok's status for the first
- * workspace folder, refreshed on demand, on folder changes and every few
- * seconds while the window has focus.
+ * workspace folder, refreshed on demand (after every Brokspace command), on
+ * folder changes, when the window gets the focus back and once a minute
+ * while it has it. Each refresh runs `brok status`, which opens the index:
+ * polling sparingly keeps the IDE light on large workspaces.
  */
 @injectable()
 export class BrokspaceModel implements Disposable {
 
-    static readonly REFRESH_INTERVAL_MS = 15_000;
+    static readonly REFRESH_INTERVAL_MS = 60_000;
+    /** A focus change refreshes a status older than this. */
+    static readonly STALE_MS = 10_000;
 
     @inject(BrokService) protected readonly service: BrokService;
     @inject(WorkspaceService) protected readonly workspaceService: WorkspaceService;
@@ -51,6 +55,7 @@ export class BrokspaceModel implements Disposable {
     protected _state: BrokspaceState = { kind: 'loading' };
     protected info: BrokInfo | undefined;
     protected refreshing: Promise<BrokspaceState> | undefined;
+    protected refreshedAt = 0;
 
     get state(): BrokspaceState {
         return this._state;
@@ -65,6 +70,13 @@ export class BrokspaceModel implements Disposable {
             }
         }, BrokspaceModel.REFRESH_INTERVAL_MS);
         this.toDispose.push(Disposable.create(() => clearInterval(timer)));
+        const onFocus = () => {
+            if (Date.now() - this.refreshedAt > BrokspaceModel.STALE_MS) {
+                this.refresh();
+            }
+        };
+        window.addEventListener('focus', onFocus);
+        this.toDispose.push(Disposable.create(() => window.removeEventListener('focus', onFocus)));
         this.workspaceService.ready.then(() => this.refresh());
     }
 
@@ -110,6 +122,7 @@ export class BrokspaceModel implements Disposable {
             }
         }
         this._state = state;
+        this.refreshedAt = Date.now();
         this.onDidChangeEmitter.fire(state);
         return state;
     }
