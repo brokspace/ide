@@ -13,6 +13,7 @@ import { QuickInputService } from '@theia/core/lib/browser/quick-input/quick-inp
 import { AbstractViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
 import { TabBarToolbarContribution, TabBarToolbarRegistry } from '@theia/core/lib/browser/shell/tab-bar-toolbar';
 import { StatusBar, StatusBarAlignment } from '@theia/core/lib/browser/status-bar/status-bar';
+import { StorageService } from '@theia/core/lib/browser/storage-service';
 import { ViewContainer, ViewContainerTitleOptions } from '@theia/core/lib/browser/view-container';
 import { WidgetManager } from '@theia/core/lib/browser/widget-manager';
 import { Widget } from '@theia/core/lib/browser/widgets/widget';
@@ -38,6 +39,9 @@ const INSTALL_URL = 'https://github.com/brokspace/brok/blob/main/docs/getting-st
 const HUB_URL = 'https://brokspace.org/docs/hub';
 /** Views a fresh layout leaves out of the side bars; their commands and shortcuts still open them. */
 const HIDDEN_BY_DEFAULT = ['debug', 'vsx-extensions-view-container', 'test-view-container', 'outline-view'];
+/** Bumped when the default layout changes; saved layouts from before get it once. */
+const LAYOUT_VERSION = 2;
+const LAYOUT_VERSION_KEY = 'brokspace.layoutVersion';
 /** Share of the window the agent takes in focus mode. */
 const AGENT_FOCUS_WIDTH = 0.7;
 
@@ -63,6 +67,7 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
     @inject(ChatAgentService) protected readonly chatAgents: ChatAgentService;
     @inject(AIChatContribution) protected readonly chatView: AIChatContribution;
     @inject(WidgetManager) protected readonly widgets: WidgetManager;
+    @inject(StorageService) protected readonly storage: StorageService;
 
     /** Set when this window starts without a saved layout. */
     protected freshLayout = false;
@@ -89,11 +94,14 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
     }
 
     /**
-     * A first layout is minimal: Explorer, Search, Source Control and
-     * Brokspace on the left, the Brokspace agent on the right.
+     * The default layout is minimal: Explorer, Search, Source Control and
+     * Brokspace on the left, the Brokspace agent on the right. A new window
+     * gets it, and so does a layout saved by an older version (once), which
+     * would otherwise keep the old Brokspace view and miss the new one.
      */
     async onDidInitializeLayout(): Promise<void> {
-        if (!this.freshLayout) {
+        const applied = await this.storage.getData<number>(LAYOUT_VERSION_KEY, 0);
+        if (!this.freshLayout && applied >= LAYOUT_VERSION) {
             return;
         }
         for (const widget of [...this.shell.getWidgets('left'), ...this.shell.getWidgets('right')]) {
@@ -101,7 +109,9 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
                 widget.close();
             }
         }
+        await this.openView({ activate: false });
         await this.chatView.openView({ activate: false, reveal: true });
+        await this.storage.setData(LAYOUT_VERSION_KEY, LAYOUT_VERSION);
     }
 
     protected async overview(): Promise<BrokspaceOverviewWidget> {
