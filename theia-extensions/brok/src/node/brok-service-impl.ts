@@ -11,8 +11,8 @@ import * as path from 'path';
 import * as readline from 'readline';
 import { injectable } from '@theia/core/shared/inversify';
 import {
-    AnswerDone, AnswerRequest, BrokClient, BrokConfig, BrokInfo, BrokService, BrokStatus, CommandResult, LinkInput, Memory, MemoryInput,
-    MemoryScope, SearchHit, ShardDetails, ShardManifest, SkillInfo
+    AnswerDone, AnswerRequest, BrokClient, BrokConfig, BrokInfo, BrokService, BrokStatus, BugInput, BugReport, CommandResult, DoctorCheck,
+    LinkInput, Memory, MemoryInput, MemoryScope, SearchHit, ShardDetails, ShardManifest, SkillInfo, StatsSummary
 } from '../common/brok-protocol';
 
 const EXE = process.platform === 'win32' ? 'brok.exe' : 'brok';
@@ -208,6 +208,28 @@ export class BrokServiceImpl implements BrokService {
 
     async syncLinks(root: string, names: string[] = []): Promise<{ name: string; error?: string }[]> {
         return this.json(root, ['link', 'sync', '--json', ...(names.length ? ['--', ...names] : [])]);
+    }
+
+    async doctor(root: string): Promise<DoctorCheck[]> {
+        return this.json<DoctorCheck[]>(root || os.homedir(), ['doctor', '--json']);
+    }
+
+    async stats(root: string, days: number): Promise<StatsSummary> {
+        return this.json<StatsSummary>(root, ['stats', '--json', '--days', String(Math.max(1, Math.round(days)))]);
+    }
+
+    async bugReport(root: string, bug: BugInput): Promise<BugReport> {
+        // `--key=value`: a value starting with "-" is never read as an option.
+        const args = ['bug', '--json', '--yes', `--repo=${bug.repo}`, `--title=${bug.title}`];
+        const optional: [string, string | undefined][] = [
+            ['what-happened', bug.whatHappened], ['expected', bug.expected], ['steps', bug.steps], ['context', bug.context],
+        ];
+        for (const [key, value] of optional) {
+            if (value?.trim()) {
+                args.push(`--${key}=${value}`);
+            }
+        }
+        return this.json<BugReport>(root || os.homedir(), args);
     }
 
     async run(root: string, args: string[]): Promise<CommandResult> {

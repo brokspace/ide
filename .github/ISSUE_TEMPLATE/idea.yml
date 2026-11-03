@@ -1,0 +1,27 @@
+name: Idea or feedback
+description: A change to Brokspace IDE, grounded in a problem you actually hit.
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Brokspace IDE is kept deliberately minimal: an editor and the Brokspace agent, with brok as the one way to an LLM.
+        Ideas that clear the bar describe a real situation, not a hypothetical improvement. Open questions are welcome in [Discussions](https://github.com/brokspace/brok/discussions).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What got in your way
+      description: What you were trying to do, and why the IDE made it harder.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: As concretely as you can. Would it belong in brok (and so in every editor) rather than only in the IDE?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds you tried (optional)

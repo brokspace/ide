@@ -24,6 +24,7 @@ Built on [Eclipse Theia](https://theia-ide.org), so VS Code extensions from
 | **Brokspace settings** | One page in the editor area (`Ctrl+Alt+,`, or the gear in the Brokspace view): overview, AI model and providers, search and index, memory, linked workspaces, coding agents and diagnostics. Changes are validated and saved to `brok.yml` at once |
 | **Memory** | What Brokspace remembers between sessions, found in every answer: private, shared with the team through git, or global to all your workspaces. Each chat with the agent is remembered; `Ctrl+Alt+M` remembers a decision or the selected code |
 | **Linked workspaces** | Link the services your workspace depends on (a folder or a git URL): answers and search know both, with paths that open in the IDE |
+| **Diagnostics and bug reports** | Brokspace settings › Diagnostics shows local metrics (search and answer latency, indexing, recent errors) and `brok doctor`'s checks with their fixes. **Report a Bug…** (and Help › Report an IDE Issue, or the button on a failed command) prepares a report with the diagnostics, secrets masked, and opens a prefilled GitHub issue |
 | **Brokspace agent** | The one way to an LLM: every request goes through brok, which routes it to the provider in `brok.yml`. Follow-ups, `/review`, `/review staged`, `/review base main`, `/skill <name> <input>`. Without an LLM it answers with what the local index finds |
 | **Agent focus mode** | `Ctrl+Shift+A` (`Cmd+Shift+A`): the agent takes most of the window; again to go back |
 | **Source control** | ✨ in the Source Control toolbar writes the commit message from the staged changes |
@@ -35,7 +36,7 @@ Built on [Eclipse Theia](https://theia-ide.org), so VS Code extensions from
 
 The IDE talks to Brokspace only through the `brok` CLI and its `--json`
 output ([contract](https://github.com/brokspace/brok/blob/main/docs/integrations.md)),
-so anything the IDE does, you can script. It needs brok 0.3.0 or newer.
+so anything the IDE does, you can script. It needs brok 0.4.0 or newer.
 
 ## Install
 
