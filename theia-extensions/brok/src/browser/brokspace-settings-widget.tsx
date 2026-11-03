@@ -11,14 +11,19 @@ import { nls } from '@theia/core/lib/common/nls';
 import { codicon, Message } from '@theia/core/lib/browser/widgets/widget';
 import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
 import { OpenerService, open } from '@theia/core/lib/browser/opener-service';
+import { WindowService } from '@theia/core/lib/browser/window/window-service';
+import { ApplicationServer } from '@theia/core/lib/common/application-protocol';
+import { URI } from '@theia/core/lib/common/uri';
 import { inject, injectable, postConstruct } from '@theia/core/shared/inversify';
 import { FileDialogService } from '@theia/filesystem/lib/browser/file-dialog/file-dialog-service';
-import { BrokConfig, BrokService, LinkInput, LinkStatus, LlmProvider, Memory, MemoryKind, MemoryScope } from '../common/brok-protocol';
+import {
+    BrokConfig, BrokService, BugInput, BugReport, BugRepo, DoctorCheck, LinkInput, LinkStatus, LlmProvider, Memory, MemoryKind, MemoryScope, StatsSummary
+} from '../common/brok-protocol';
 import { BrokspaceCommands } from './brokspace-commands';
 import { BrokspaceMemory, MEMORY_SCOPES, memoryUri } from './brokspace-memory';
 import { BrokspaceModel } from './brokspace-model';
 
-export type SettingsSection = 'overview' | 'model' | 'search' | 'memory' | 'links' | 'agents' | 'diagnostics';
+export type SettingsSection = 'overview' | 'model' | 'search' | 'memory' | 'links' | 'agents' | 'diagnostics' | 'report';
 
 const SECTIONS: { id: SettingsSection; icon: string }[] = [
     { id: 'overview', icon: 'home' },
@@ -28,6 +33,7 @@ const SECTIONS: { id: SettingsSection; icon: string }[] = [
     { id: 'links', icon: 'link' },
     { id: 'agents', icon: 'plug' },
     { id: 'diagnostics', icon: 'pulse' },
+    { id: 'report', icon: 'bug' },
 ];
 
 const MEMORY_KINDS: MemoryKind[] = ['note', 'decision', 'fact', 'handoff', 'session'];
@@ -50,6 +56,8 @@ export class BrokspaceSettingsWidget extends ReactWidget {
     @inject(MessageService) protected readonly messages: MessageService;
     @inject(OpenerService) protected readonly opener: OpenerService;
     @inject(FileDialogService) protected readonly fileDialog: FileDialogService;
+    @inject(WindowService) protected readonly windowService: WindowService;
+    @inject(ApplicationServer) protected readonly application: ApplicationServer;
 
     protected section: SettingsSection = 'overview';
     protected config: BrokConfig | undefined;
@@ -64,6 +72,14 @@ export class BrokspaceSettingsWidget extends ReactWidget {
     protected draft: { title: string; body: string; kind: MemoryKind; scope: MemoryScope; tags: string } = emptyDraft();
     protected showDraft = false;
     protected linkDraft: LinkInput & { open: boolean } = emptyLink();
+
+    protected stats: StatsSummary | undefined;
+    protected statsError: string | undefined;
+    protected statsDays = 7;
+    protected checks: DoctorCheck[] | undefined;
+    protected checksError: string | undefined;
+    protected bug: BugInput = { repo: 'ide', title: '' };
+    protected prepared: BugReport | undefined;
 
     @postConstruct()
     protected init(): void {
@@ -80,8 +96,12 @@ export class BrokspaceSettingsWidget extends ReactWidget {
     }
 
     /** Shows a section; `links` with `addLink` opens the form to link a workspace. */
-    showSection(section: SettingsSection, options: { addLink?: boolean; addMemory?: boolean } = {}): void {
+    showSection(section: SettingsSection, options: { addLink?: boolean; addMemory?: boolean; bug?: Partial<BugInput> } = {}): void {
         this.section = section;
+        if (options.bug) {
+            this.bug = { ...this.bug, ...options.bug };
+            this.prepared = undefined;
+        }
         if (options.addLink) {
             this.linkDraft.open = true;
         }
@@ -164,6 +184,7 @@ export class BrokspaceSettingsWidget extends ReactWidget {
             case 'links': return this.renderLinks();
             case 'agents': return this.renderAgents();
             case 'diagnostics': return this.renderDiagnostics();
+            case 'report': return this.renderReport();
         }
     }
 
@@ -541,8 +562,17 @@ export class BrokspaceSettingsWidget extends ReactWidget {
         if (state.kind !== 'ready') {
             return undefined;
         }
+        if (!this.stats && !this.statsError && !this.busy.has('stats')) {
+            this.loadStats();
+        }
+        if (!this.checks && !this.checksError && !this.busy.has('doctor')) {
+            this.loadChecks();
+        }
         return <>
-            <div className='bk-settings-group'>
+            {this.renderActivity()}
+            {this.renderHealth()}
+            <section className='bk-settings-group'>
+                <div className='bk-group-head'><span className='bk-group-title'>{nls.localize('brokspace/settings/details', 'Details')}</span></div>
                 <dl className='bk-props bk-props-wide'>
                     <dt>brok</dt><dd className='bk-mono'>{state.info.version} · {state.info.path}</dd>
                     <dt>{nls.localize('brokspace/settings/backends', 'Backends')}</dt><dd>{(state.status.backends ?? []).join(', ') || '—'}</dd>
@@ -554,12 +584,168 @@ export class BrokspaceSettingsWidget extends ReactWidget {
                         <dd>{nls.localize('brokspace/settings/partition', '{0} files · {1} chunks · {2}', p.files.toLocaleString(), p.chunks.toLocaleString(), p.backend)}</dd>
                     </React.Fragment>)}
                 </dl>
-            </div>
+            </section>
             <div className='bk-buttons'>
-                <button className='theia-button main' onClick={() => this.run(BrokspaceCommands.DOCTOR.id)}>{BrokspaceCommands.DOCTOR.label}</button>
                 <button className='theia-button secondary' onClick={() => this.run(BrokspaceCommands.SHOW_LOGS.id)}>{BrokspaceCommands.SHOW_LOGS.label}</button>
                 <button className='theia-button secondary' onClick={() => this.openConfigFile()}>{nls.localize('brokspace/settings/openConfig', 'Open brok.yml')}</button>
+                <button className='theia-button secondary' onClick={() => this.showSection('report')}>
+                    <span className={codicon('bug')} /> {nls.localize('brokspace/settings/reportBug', 'Report a bug')}
+                </button>
             </div>
+        </>;
+    }
+
+    /** Local metrics (`brok stats`): latencies, failures and the latest errors. */
+    protected renderActivity(): React.ReactNode {
+        const stats = this.stats;
+        const ms = (value?: number | null) => value === undefined || value === null ? '—' : formatMs(value);
+        const tile = (icon: string, label: string, value: string, detail: string, warn = false) =>
+            <div className={`bk-tile bk-tile-static ${warn ? 'bk-tile-warn' : ''}`}>
+                <span className={`bk-tile-icon ${codicon(icon)}`} />
+                <span className='bk-tile-label'>{label}</span>
+                <span className='bk-tile-value'>{value}</span>
+                <span className='bk-tile-detail' title={detail}>{detail}</span>
+            </div>;
+        return <section className='bk-settings-group'>
+            <div className='bk-group-head'>
+                <span className='bk-group-title'>{nls.localize('brokspace/settings/activity', 'Activity')}</span>
+                <span className='bk-spacer' />
+                <div className='bk-chips' role='radiogroup' aria-label={nls.localize('brokspace/settings/period', 'Period')}>
+                    {[1, 7, 30].map(days => <button key={days} role='radio' aria-checked={this.statsDays === days}
+                        className={`bk-chip ${this.statsDays === days ? 'bk-chip-on' : ''}`} onClick={() => { this.statsDays = days; this.loadStats(); }}>
+                        {nls.localize('brokspace/settings/days', '{0}d', days)}
+                    </button>)}
+                </div>
+                {this.iconButton(this.busy.has('stats') ? 'loading codicon-modifier-spin' : 'refresh', BrokspaceCommands.REFRESH.label ?? '', () => this.loadStats())}
+            </div>
+            {this.statsError && <div className='bk-error'>{this.statsError}</div>}
+            {!stats ? <div className='bk-muted'>{nls.localize('brokspace/view/loading', 'Loading…')}</div>
+                : stats.events === 0 ? <p className='bk-settings-note'>{nls.localize('brokspace/settings/noActivity',
+                    'Nothing recorded yet. Searches, answers and indexing show up here as you use Brokspace; metrics stay on this machine.')}</p>
+                    : <>
+                        <div className='bk-tiles bk-tiles-dense'>
+                            {tile('search', nls.localize('brokspace/settings/searches', 'Searches'), stats.search.latency.count.toLocaleString(),
+                                nls.localize('brokspace/settings/latency', 'p50 {0} · p95 {1}', ms(stats.search.latency.p50_ms), ms(stats.search.latency.p95_ms)))}
+                            {tile('comment-discussion', nls.localize('brokspace/settings/answers', 'Answers'), stats.answers.latency.count.toLocaleString(),
+                                nls.localize('brokspace/settings/answersDetail', 'p50 {0} · first words {1}', ms(stats.answers.latency.p50_ms), ms(stats.answers.first_token.p50_ms)),
+                                stats.answers.failed > 0)}
+                            {tile('database', nls.localize('brokspace/settings/indexing', 'Indexing'), stats.index.latency.count.toLocaleString(),
+                                nls.localize('brokspace/settings/indexDetail', '{0} files · p50 {1}', stats.index.files_indexed.toLocaleString(), ms(stats.index.latency.p50_ms)))}
+                            {tile('error', nls.localize('brokspace/settings/errors', 'Errors'), stats.errors.count.toLocaleString(),
+                                stats.answers.failed > 0 ? nls.localize('brokspace/settings/failedAnswers', '{0} answers failed', stats.answers.failed)
+                                    : nls.localize('brokspace/settings/emptySearches', '{0} searches found nothing', stats.search.empty), stats.errors.count > 0)}
+                        </div>
+                        {stats.errors.recent.length > 0 && <ul className='bk-errors'>
+                            {stats.errors.recent.map(error => <li key={`${error.at}:${error.command}`} className='bk-error-row'>
+                                <span className={`bk-error-icon ${codicon('error')}`} />
+                                <span className='bk-error-text'>
+                                    <span className='bk-mono'>brok {error.command}</span> · <span className='bk-muted-inline'>{error.at.slice(0, 16).replace('T', ' ')}</span>
+                                    <span className='bk-error-message' title={error.message}>{error.message}</span>
+                                </span>
+                                <button className='bk-link-button' onClick={() => this.prepareReport({
+                                    title: `brok ${error.command}: ${error.message.slice(0, 80)}`, whatHappened: error.message,
+                                })}>{nls.localize('brokspace/settings/report', 'Report')}</button>
+                            </li>)}
+                        </ul>}
+                    </>}
+        </section>;
+    }
+
+    /** `brok doctor`: what works, what does not and the fix. */
+    protected renderHealth(): React.ReactNode {
+        const checks = this.checks;
+        const icon = (status: DoctorCheck['status']) => status === 'ok' ? 'pass' : status === 'warn' ? 'warning' : 'error';
+        const failing = checks?.filter(check => check.status !== 'ok') ?? [];
+        return <section className='bk-settings-group'>
+            <div className='bk-group-head'>
+                <span className='bk-group-title'>{nls.localize('brokspace/settings/health', 'Health')}</span>
+                {checks && <span className={`bk-badge ${failing.some(c => c.status === 'fail') ? 'bk-badge-accent' : ''}`}>
+                    {failing.length ? nls.localize('brokspace/settings/toLookAt', '{0} to look at', failing.length) : nls.localize('brokspace/settings/allGood', 'all good')}
+                </span>}
+                <span className='bk-spacer' />
+                <button className='theia-button secondary bk-compact' disabled={this.busy.has('doctor')} onClick={() => this.loadChecks()}>
+                    {this.busy.has('doctor') ? nls.localize('brokspace/settings/checking', 'Checking…') : nls.localize('brokspace/settings/checkAgain', 'Check again')}
+                </button>
+            </div>
+            {this.checksError && <div className='bk-error'>{this.checksError}</div>}
+            {!checks ? <div className='bk-muted'>{nls.localize('brokspace/settings/checking', 'Checking…')}</div>
+                : <ul className='bk-checks'>
+                    {[...failing, ...checks.filter(check => check.status === 'ok')].map((check, i) => <li key={`${check.name}:${i}`} className={`bk-check-row bk-check-${check.status}`}>
+                        <span className={`bk-check-icon ${codicon(icon(check.status))}`} />
+                        <span className='bk-check-name'>{check.name}</span>
+                        <span className='bk-check-detail'>
+                            <span title={check.detail}>{check.detail}</span>
+                            {check.fix && <code className='bk-check-fix' title={check.fix}>{check.fix}</code>}
+                        </span>
+                    </li>)}
+                </ul>}
+        </section>;
+    }
+
+    /** The bug report form: what happened, then the prefilled issue with the diagnostics. */
+    protected renderReport(): React.ReactNode {
+        const draft = this.bug;
+        const set = (patch: Partial<BugInput>) => { this.bug = { ...draft, ...patch }; this.prepared = undefined; this.update(); };
+        const busy = this.busy.has('bug');
+        const repos: [BugRepo, string][] = [
+            ['brok', nls.localize('brokspace/settings/repoBrok', 'brok: setup, index, search, memory, links')],
+            ['brok-agent', nls.localize('brokspace/settings/repoAgent', 'Answers, reviews, commit messages, skills')],
+            ['ide', nls.localize('brokspace/settings/repoIde', 'Brokspace IDE')],
+        ];
+        return <>
+            <form className='bk-settings-group bk-draft' onSubmit={e => { e.preventDefault(); this.prepareReport(); }}>
+                <label className='bk-field'>
+                    <span>{nls.localize('brokspace/settings/bugAbout', 'About')}</span>
+                    <select className='theia-select' value={draft.repo} onChange={e => set({ repo: e.currentTarget.value as BugRepo })}>
+                        {repos.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                    </select>
+                </label>
+                <label className='bk-field'>
+                    <span>{nls.localize('brokspace/settings/bugTitle', 'What went wrong, in one line')}</span>
+                    <input className='theia-input' value={draft.title} placeholder={nls.localize('brokspace/settings/bugTitlePlaceholder', 'Review hangs on large diffs')}
+                        onChange={e => set({ title: e.currentTarget.value })} />
+                </label>
+                <label className='bk-field'>
+                    <span>{nls.localize('brokspace/settings/bugWhat', 'What happened')}</span>
+                    <textarea className='theia-input' rows={3} value={draft.whatHappened ?? ''} onChange={e => set({ whatHappened: e.currentTarget.value })} />
+                </label>
+                <label className='bk-field'>
+                    <span>{nls.localize('brokspace/settings/bugExpected', 'What you expected')}</span>
+                    <textarea className='theia-input' rows={2} value={draft.expected ?? ''} onChange={e => set({ expected: e.currentTarget.value })} />
+                </label>
+                <label className='bk-field'>
+                    <span>{nls.localize('brokspace/settings/bugSteps', 'Steps to reproduce (optional)')}</span>
+                    <textarea className='theia-input bk-mono' rows={2} value={draft.steps ?? ''} onChange={e => set({ steps: e.currentTarget.value })} />
+                </label>
+                <p className='bk-settings-note'>{nls.localize('brokspace/settings/bugPrivacy',
+                    'The report adds versions, your OS, brok doctor, recent metrics, the end of the log and brok.yml. Secrets are masked and your home folder shows as ~. Nothing is sent until you submit the issue on GitHub.')}</p>
+                <div className='bk-buttons'>
+                    <button type='submit' className='theia-button main' disabled={busy || !draft.title.trim()}>
+                        {busy ? nls.localize('brokspace/settings/bugPreparing', 'Preparing the report…') : nls.localize('brokspace/settings/bugPrepare', 'Prepare the report')}
+                    </button>
+                </div>
+            </form>
+            {this.prepared && <section className='bk-settings-group'>
+                <div className='bk-group-head'>
+                    <span className={codicon('pass')} />
+                    <span className='bk-group-title'>{nls.localize('brokspace/settings/bugReady', 'Report ready')}</span>
+                </div>
+                <p className='bk-settings-note'>{nls.localize('brokspace/settings/bugReadyText',
+                    'Saved to {0}. Open the issue: the summary and the diagnostics are filled in. Attach the report file for the log and the configuration, then submit.',
+                    this.prepared.file_shown ?? this.prepared.file)}</p>
+                <div className='bk-buttons'>
+                    <button className='theia-button main' onClick={() => this.openIssue()}>
+                        <span className={codicon('github')} /> {nls.localize('brokspace/settings/bugOpen', 'Open the issue on GitHub')}
+                    </button>
+                    <button className='theia-button secondary' onClick={() => open(this.opener, URI.fromFilePath(this.prepared!.file))}>
+                        {nls.localize('brokspace/settings/bugOpenFile', 'Open the report')}
+                    </button>
+                </div>
+                <details className='bk-preview'>
+                    <summary>{nls.localize('brokspace/settings/bugPreview', 'Preview')}</summary>
+                    <pre className='bk-mono'>{this.prepared.report}</pre>
+                </details>
+            </section>}
         </>;
     }
 
@@ -785,6 +971,76 @@ export class BrokspaceSettingsWidget extends ReactWidget {
         await this.loadConfig();
     }
 
+    protected async loadStats(): Promise<void> {
+        const root = this.model.root;
+        if (!root) {
+            return;
+        }
+        this.busy.add('stats');
+        this.update();
+        try {
+            this.stats = await this.service.stats(root, this.statsDays);
+            this.statsError = undefined;
+        } catch (error) {
+            this.statsError = message(error);
+        } finally {
+            this.busy.delete('stats');
+            this.update();
+        }
+    }
+
+    protected async loadChecks(): Promise<void> {
+        this.busy.add('doctor');
+        this.update();
+        try {
+            this.checks = await this.service.doctor(this.model.root ?? '');
+            this.checksError = undefined;
+        } catch (error) {
+            this.checksError = message(error);
+        } finally {
+            this.busy.delete('doctor');
+            this.update();
+        }
+    }
+
+    /** Builds the report (`brok bug --json`), with `bug` filled into the form first. */
+    async prepareReport(bug?: Partial<BugInput>): Promise<void> {
+        if (bug) {
+            this.showSection('report', { bug });
+        }
+        if (!this.bug.title.trim()) {
+            this.update();
+            return;
+        }
+        this.busy.add('bug');
+        this.update();
+        try {
+            this.prepared = await this.service.bugReport(this.model.root ?? '', { ...this.bug, context: await this.ideContext() });
+        } catch (error) {
+            this.messages.error(nls.localize('brokspace/settings/bugFailed', 'The report could not be prepared: {0}', message(error)));
+        } finally {
+            this.busy.delete('bug');
+            this.update();
+        }
+    }
+
+    protected openIssue(): void {
+        if (this.prepared) {
+            this.windowService.openNewWindow(this.prepared.url, { external: true });
+        }
+    }
+
+    /** The IDE's versions, for the report's environment section. */
+    protected async ideContext(): Promise<string> {
+        const info = await this.application.getApplicationInfo().catch(() => undefined);
+        const electron = /Electron\/([\d.]+)/.exec(navigator.userAgent)?.[1];
+        const lines = [
+            `${info?.name ?? 'Brokspace IDE'} ${info?.version ?? ''} (${electron ? `Electron ${electron}` : 'browser'})`.trim(),
+            `UI language: ${nls.locale ?? 'en'}`,
+        ];
+        return lines.join('\n');
+    }
+
     protected openConfigFile(): void {
         const root = this.model.rootUri;
         if (root) {
@@ -802,6 +1058,7 @@ export function sectionTitle(section: SettingsSection): string {
         case 'links': return nls.localize('brokspace/settings/links', 'Linked workspaces');
         case 'agents': return nls.localize('brokspace/settings/agents', 'Coding agents');
         case 'diagnostics': return nls.localize('brokspace/settings/diagnostics', 'Diagnostics');
+        case 'report': return nls.localize('brokspace/settings/reportBug', 'Report a bug');
     }
 }
 
@@ -815,7 +1072,10 @@ function sectionDescription(section: SettingsSection): string {
         case 'links': return nls.localize('brokspace/settings/linksText',
             'Other workspaces this one depends on, on this machine or as git repositories. Their code and memories are searched with yours.');
         case 'agents': return nls.localize('brokspace/settings/agentsText', 'Brokspace in the coding agents you already use.');
-        case 'diagnostics': return nls.localize('brokspace/settings/diagnosticsText', 'Versions, index details and health checks.');
+        case 'diagnostics': return nls.localize('brokspace/settings/diagnosticsText',
+            'How Brokspace performs on this machine, what failed lately and what to fix. Metrics stay local.');
+        case 'report': return nls.localize('brokspace/settings/reportText',
+            'Tell us what went wrong: the report comes with the diagnostics we need, secrets masked, and opens as a GitHub issue you review before sending.');
     }
 }
 
@@ -862,6 +1122,14 @@ export function suggestName(target: string): string {
 
 export function firstLine(text: string): string {
     return text.split('\n').map(line => line.replace(/^[#>*\-\s]+/, '').trim()).find(Boolean) ?? '';
+}
+
+/** `42 ms`, `1.8 s`, `2.5 min`. */
+export function formatMs(ms: number): string {
+    if (ms < 1_000) {
+        return `${Math.round(ms)} ms`;
+    }
+    return ms < 60_000 ? `${(ms / 1_000).toFixed(1)} s` : `${(ms / 60_000).toFixed(1)} min`;
 }
 
 function message(error: unknown): string {

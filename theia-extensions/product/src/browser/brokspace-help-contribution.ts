@@ -11,6 +11,9 @@ import { Command, CommandContribution, CommandRegistry } from '@theia/core/lib/c
 import { MenuContribution, MenuModelRegistry } from '@theia/core/lib/common/menu';
 import { BRAND } from './branding-util';
 
+/** The Brokspace extension's report form (brokspace-ide-brok-ext). */
+const REPORT_BUG = 'brokspace.reportBug';
+
 export namespace BrokspaceHelpCommands {
     export const DOCUMENTATION = Command.toLocalizedCommand({
         id: 'brokspace-ide.documentation', category: 'Help', label: 'Brokspace Documentation'
@@ -36,7 +39,12 @@ export class BrokspaceHelpContribution implements CommandContribution, MenuContr
         registry.registerCommand(BrokspaceHelpCommands.DOCUMENTATION, { execute: open(BRAND.docs) });
         registry.registerCommand(BrokspaceHelpCommands.GETTING_STARTED, { execute: open(BRAND.gettingStarted) });
         registry.registerCommand(BrokspaceHelpCommands.DISCUSSIONS, { execute: open(BRAND.discussions) });
-        registry.registerCommand(BrokspaceHelpCommands.REPORT_ISSUE, { execute: open(BRAND.issues) });
+        // The Brokspace report form (diagnostics included) when the Brokspace extension is there.
+        registry.registerCommand(BrokspaceHelpCommands.REPORT_ISSUE, {
+            execute: () => registry.getCommand(REPORT_BUG)
+                ? registry.executeCommand(REPORT_BUG, { repo: 'ide' })
+                : this.windowService.openNewWindow(BRAND.issues, { external: true }),
+        });
     }
 
     registerMenus(menus: MenuModelRegistry): void {

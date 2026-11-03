@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "brokspace-ide-product-ext",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Brokspace IDE branding: welcome page, about dialog, help menu",
   "dependencies": {
     "@theia/ai-registry": "1.76.0",

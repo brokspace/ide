@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "brokspace-ide-brok-ext",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Brokspace in the IDE: workspace status, hybrid search, the Brokspace chat agent, skills, shards, reviews and commit messages, through the brok CLI",
   "license": "MIT",
   "author": "Brokspace contributors",
