@@ -527,6 +527,137 @@
     padding-bottom: var(--bk-space-3, 12px);
 }
 
+/* Diagnostics: activity tiles, recent errors, health checks */
+.bk-tiles-dense {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    padding-bottom: var(--bk-space-3, 12px);
+}
+
+.bk-tile-static {
+    grid-template-rows: auto auto auto;
+    cursor: default;
+}
+
+.bk-tile-static .bk-tile-icon {
+    grid-row: span 3;
+}
+
+.bk-tile-detail {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--theia-descriptionForeground);
+    font-size: var(--theia-ui-font-size0);
+}
+
+.bk-tile-warn {
+    border-color: color-mix(in srgb, var(--theia-editorWarning-foreground, #D29922) 55%, transparent);
+}
+
+.bk-tile-warn .bk-tile-icon {
+    color: var(--theia-editorWarning-foreground, #D29922);
+}
+
+.bk-errors,
+.bk-checks {
+    list-style: none;
+    margin: 0 calc(var(--bk-space-4, 16px) * -1);
+    padding: 0 0 var(--bk-space-2, 8px);
+}
+
+.bk-error-row,
+.bk-check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--bk-space-2, 8px);
+    padding: var(--bk-space-2, 8px) var(--bk-space-4, 16px);
+    border-top: 1px solid var(--theia-widget-border, var(--theia-panel-border, transparent));
+}
+
+.bk-error-icon,
+.bk-check-icon {
+    flex: none;
+    margin-top: 2px;
+}
+
+.bk-error-icon,
+.bk-check-fail .bk-check-icon {
+    color: var(--theia-errorForeground);
+}
+
+.bk-check-warn .bk-check-icon {
+    color: var(--theia-editorWarning-foreground, #D29922);
+}
+
+.bk-check-ok .bk-check-icon {
+    color: var(--theia-testing-iconPassed, #3FB950);
+}
+
+.bk-error-text,
+.bk-check-detail {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bk-error-message,
+.bk-check-detail > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--theia-descriptionForeground);
+}
+
+.bk-check-detail > span {
+    color: var(--theia-foreground);
+}
+
+.bk-muted-inline {
+    color: var(--theia-descriptionForeground);
+    font-size: var(--theia-ui-font-size0);
+}
+
+.bk-check-name {
+    flex: none;
+    width: 96px;
+    font-weight: 500;
+}
+
+.bk-check-fix {
+    align-self: flex-start;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 1px 6px;
+    border-radius: var(--bk-radius-sm, 4px);
+    background: var(--theia-textCodeBlock-background, var(--theia-input-background));
+    font-family: var(--theia-code-font-family);
+    font-size: var(--theia-code-font-size);
+}
+
+.bk-preview {
+    padding-bottom: var(--bk-space-3, 12px);
+}
+
+.bk-preview summary {
+    cursor: pointer;
+    color: var(--theia-textLink-foreground);
+}
+
+.bk-preview pre {
+    max-height: 360px;
+    overflow: auto;
+    margin: var(--bk-space-2, 8px) 0 0;
+    padding: var(--bk-space-3, 12px);
+    border-radius: var(--bk-radius, 6px);
+    background: var(--theia-textCodeBlock-background, var(--theia-input-background));
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 /* Narrow editor (a split, a small window): the sections become a row of
    tabs and every setting stacks its control under its text. */
 @container (max-width: 640px) {

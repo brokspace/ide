@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "brokspace-ide-updater-ext",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Brokspace IDE updater (GitHub Releases)",
   "dependencies": {
     "@theia/core": "1.76.0",

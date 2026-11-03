@@ -28,7 +28,7 @@ import { EDITOR_CONTEXT_MENU } from '@theia/editor/lib/browser/editor-menu';
 import { OutputChannel, OutputChannelManager } from '@theia/output/lib/browser/output-channel';
 import { ScmService } from '@theia/scm/lib/browser/scm-service';
 import { ScmWidget } from '@theia/scm/lib/browser/scm-widget';
-import { BrokService, Memory, MemoryKind, MemoryScope, MINIMUM_BROK_VERSION } from '../common/brok-protocol';
+import { BrokService, BugInput, Memory, MemoryKind, MemoryScope, MINIMUM_BROK_VERSION } from '../common/brok-protocol';
 import { BROKSPACE_AGENT_ID } from './brokspace-chat-agent';
 import { BrokspaceCommands } from './brokspace-commands';
 import { BrokspaceMemory, MEMORY_SCOPES } from './brokspace-memory';
@@ -309,6 +309,10 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
             isEnabled: ready, execute: () => this.runInOutput(nls.localize('brokspace/run/logs', 'Brokspace logs'), ['logs']),
         });
         registry.registerCommand(BrokspaceCommands.ADD_PROVIDER, { isEnabled: ready, execute: () => this.addProvider() });
+        registry.registerCommand(BrokspaceCommands.SHOW_DIAGNOSTICS, { execute: () => this.openSettings('diagnostics') });
+        registry.registerCommand(BrokspaceCommands.REPORT_BUG, {
+            execute: (bug?: unknown) => this.openSettings('report', { bug: typeof bug === 'object' && bug ? bug as Partial<BugInput> : undefined }),
+        });
     }
 
     override registerMenus(menus: MenuModelRegistry): void {
@@ -322,8 +326,8 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
         group('3_memory', BrokspaceCommands.REMEMBER, BrokspaceCommands.SHOW_MEMORY, BrokspaceCommands.ADD_LINK, BrokspaceCommands.SYNC_LINKS);
         group('4_shards', BrokspaceCommands.INSTALL_SHARD, BrokspaceCommands.NEW_SHARD, BrokspaceCommands.BROWSE_SHARDS);
         group('5_service', BrokspaceCommands.START, BrokspaceCommands.STOP, BrokspaceCommands.RESTART, BrokspaceCommands.REINDEX);
-        group('6_workspace', BrokspaceCommands.SETTINGS, BrokspaceCommands.SETUP, BrokspaceCommands.CONNECT_AGENTS, BrokspaceCommands.EXPORT_SKILLS,
-            BrokspaceCommands.DOCTOR);
+        group('6_workspace', BrokspaceCommands.SETTINGS, BrokspaceCommands.SETUP, BrokspaceCommands.CONNECT_AGENTS, BrokspaceCommands.EXPORT_SKILLS);
+        group('7_help', BrokspaceCommands.SHOW_DIAGNOSTICS, BrokspaceCommands.DOCTOR, BrokspaceCommands.SHOW_LOGS, BrokspaceCommands.REPORT_BUG);
         menus.registerMenuAction([...EDITOR_CONTEXT_MENU, 'z_brokspace'], { commandId: BrokspaceCommands.REMEMBER_SELECTION.id });
     }
 
@@ -416,7 +420,7 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
     }
 
     /** Opens Brokspace settings in the editor area, at `section`. */
-    protected async openSettings(section: SettingsSection, options: { addLink?: boolean; addMemory?: boolean } = {}): Promise<void> {
+    protected async openSettings(section: SettingsSection, options: { addLink?: boolean; addMemory?: boolean; bug?: Partial<BugInput> } = {}): Promise<void> {
         const widget = await this.widgets.getOrCreateWidget<BrokspaceSettingsWidget>(BrokspaceSettingsWidget.ID);
         widget.showSection(section, options);
         if (!widget.isAttached) {
@@ -634,7 +638,8 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
                 }
                 return true;
             }
-            this.messages.error(nls.localize('brokspace/run/failed', '{0} failed. See the Brokspace output for details.', title));
+            this.offerReport(nls.localize('brokspace/run/failed', '{0} failed. See the Brokspace output for details.', title),
+                { title: `brok ${args[0] ?? ''}: ${title} failed`, whatHappened: lastLines(`${result.stdout}${result.stderr}`), steps: `brok ${args.join(' ')}` });
             return false;
         } finally {
             progress.cancel();
@@ -651,14 +656,23 @@ export class BrokspaceContribution extends AbstractViewContribution<ViewContaine
         if (result.code === 0) {
             this.messages.info(success);
         } else {
-            this.messages.error(nls.localize('brokspace/run/commandFailed', 'brok {0} failed: {1}', args.join(' '),
-                (result.stderr || result.stdout).trim()));
+            const output = (result.stderr || result.stdout).trim();
+            this.offerReport(nls.localize('brokspace/run/commandFailed', 'brok {0} failed: {1}', args.join(' '), output),
+                { title: `brok ${args.join(' ')} failed`, whatHappened: lastLines(output), steps: `brok ${args.join(' ')}` });
         }
         await this.model.refresh();
     }
+
+    /** Shows an error with a "Report a Bug" button that opens the form, filled in. */
+    protected async offerReport(text: string, bug: Partial<BugInput>): Promise<void> {
+        const report = nls.localize('brokspace/run/reportAction', 'Report a Bug');
+        if (await this.messages.error(text, report) === report) {
+            await this.openSettings('report', { bug: { repo: 'brok', ...bug } });
+        }
+    }
 }
 
-const SECTIONS: SettingsSection[] = ['overview', 'model', 'search', 'memory', 'links', 'agents', 'diagnostics'];
+const SECTIONS: SettingsSection[] = ['overview', 'model', 'search', 'memory', 'links', 'agents', 'diagnostics', 'report'];
 
 function isSection(value: unknown): value is SettingsSection {
     return typeof value === 'string' && (SECTIONS as string[]).includes(value);
@@ -666,4 +680,9 @@ function isSection(value: unknown): value is SettingsSection {
 
 function isMemory(value: unknown): value is Memory {
     return typeof value === 'object' && !!value && typeof (value as Memory).id === 'string' && typeof (value as Memory).scope === 'string';
+}
+
+/** The last few lines of a command's output, for a bug report. */
+function lastLines(output: string, count = 12): string {
+    return output.split(/\r?\n/).filter(line => line.trim()).slice(-count).join('\n');
 }

@@ -13,8 +13,8 @@ import { RpcServer } from '@theia/core/lib/common/messaging/proxy-factory';
  */
 export const BROK_SERVICE_PATH = '/services/brokspace';
 
-/** Oldest brok with the JSON output the IDE relies on (memory, links, config). */
-export const MINIMUM_BROK_VERSION = '0.3.0';
+/** Oldest brok with the JSON output the IDE relies on (doctor, stats and bug reports). */
+export const MINIMUM_BROK_VERSION = '0.4.0';
 
 export interface BrokInfo {
     /** Whether a working `brok` was found. */
@@ -191,6 +191,55 @@ export interface AnswerDone {
     sources: SourceRef[];
 }
 
+/** One check of `brok doctor --json`. */
+export interface DoctorCheck {
+    status: 'ok' | 'warn' | 'fail';
+    name: string;
+    detail: string;
+    fix?: string;
+}
+
+export interface Latency {
+    count: number;
+    p50_ms?: number | null;
+    p95_ms?: number | null;
+}
+
+/** `brok stats --json`: the local metrics of the last `days` days. */
+export interface StatsSummary {
+    days: number;
+    events: number;
+    search: { latency: Latency; empty: number; semantic: number; with_links: number; with_memories: number };
+    answers: { latency: Latency; first_token: Latency; failed: number; models: Record<string, number>; skills: Record<string, number> };
+    index: { latency: Latency; files_indexed: number; last?: string | null };
+    errors: { count: number; commands: Record<string, number>; recent: { at: string; command: string; message: string }[] };
+}
+
+/** Where a bug report goes: the CLI, the agent (answers, reviews, skills) or the IDE. */
+export type BugRepo = 'brok' | 'brok-agent' | 'ide';
+
+/** What to report (`brok bug`). */
+export interface BugInput {
+    repo: BugRepo;
+    title: string;
+    whatHappened?: string;
+    expected?: string;
+    steps?: string;
+    /** Environment lines the IDE adds (its versions). */
+    context?: string;
+}
+
+/** `brok bug --json`: the prefilled issue form and the saved report. */
+export interface BugReport {
+    repo: BugRepo;
+    url: string;
+    file: string;
+    /** `file` with the home directory as `~`. */
+    file_shown?: string;
+    /** Markdown, secrets masked. */
+    report: string;
+}
+
 /** `brok config get --json`: the parts of brok.yml the IDE edits. */
 export interface BrokConfig {
     workspace: { submodules: boolean; links: Record<string, { path?: string; git?: string; branch?: string; description?: string; memory?: boolean }> };
@@ -248,6 +297,12 @@ export interface BrokService extends RpcServer<BrokClient> {
     removeLink(root: string, name: string): Promise<void>;
     /** `brok link sync --json`: pulls git links, re-indexes the ones brok manages. */
     syncLinks(root: string, names?: string[]): Promise<{ name: string; error?: string }[]>;
+    /** `brok doctor --json`; `root` may be empty (no folder open). */
+    doctor(root: string): Promise<DoctorCheck[]>;
+    /** `brok stats --json`. */
+    stats(root: string, days: number): Promise<StatsSummary>;
+    /** `brok bug --json`: saves the report and returns the prefilled issue link (opens nothing). */
+    bugReport(root: string, bug: BugInput): Promise<BugReport>;
     /** Any other brok command (start, stop, init, doctor, shard install...). */
     run(root: string, args: string[]): Promise<CommandResult>;
 }

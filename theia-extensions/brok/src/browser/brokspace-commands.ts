@@ -104,6 +104,12 @@ export namespace BrokspaceCommands {
     export const ADD_PROVIDER = Command.toLocalizedCommand({
         id: 'brokspace.addProvider', category: CATEGORY, label: 'Add LLM Provider…', iconClass: 'codicon codicon-add'
     }, 'brokspace/commands/addProvider', CATEGORY_KEY);
+    export const REPORT_BUG = Command.toLocalizedCommand({
+        id: 'brokspace.reportBug', category: CATEGORY, label: 'Report a Bug…', iconClass: 'codicon codicon-bug'
+    }, 'brokspace/commands/reportBug', CATEGORY_KEY);
+    export const SHOW_DIAGNOSTICS = Command.toLocalizedCommand({
+        id: 'brokspace.showDiagnostics', category: CATEGORY, label: 'Diagnostics', iconClass: 'codicon codicon-pulse'
+    }, 'brokspace/commands/showDiagnostics', CATEGORY_KEY);
     export const SYNC_LINKS = Command.toLocalizedCommand({
         id: 'brokspace.syncLinks', category: CATEGORY, label: 'Sync Linked Workspaces', iconClass: 'codicon codicon-sync'
     }, 'brokspace/commands/syncLinks', CATEGORY_KEY);

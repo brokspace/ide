@@ -1,0 +1,41 @@
+name: Bug
+description: Brokspace IDE did the wrong thing.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! The quickest way: **Help › Report an IDE Issue** (or **Brokspace: Report a Bug…**) fills this form with the diagnostics, secrets masked.
+        Problems with answers, reviews or skills belong in [brokspace/brok-agent](https://github.com/brokspace/brok-agent/issues); with indexing, search, memory or links in [brokspace/brok](https://github.com/brokspace/brok/issues).
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Diagnostics
+      description: Filled in by the IDE's report form or `brok bug --repo ide`. Otherwise, the IDE version (Help › About) and the output of `brok doctor`.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Screenshots help, especially for layout problems.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Steps to reproduce
+      description: What you clicked or typed, in order.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: The Brokspace output (View › Output › Brokspace), or attach the report file the form saved.
+      render: text
