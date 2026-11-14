@@ -6,6 +6,16 @@
 </p>
 <p align="center"><b>Brokspace IDE: your workspace, understood.</b></p>
 
+> [!IMPORTANT]
+> **Brokspace IDE is discontinued.** Brokspace is coming to the editors you
+> already use instead: an extension for VS Code (and Cursor and Windsurf)
+> first, then a plugin for IntelliJ and the other JetBrains IDEs. The IDE
+> keeps working and its [releases](https://github.com/brokspace/ide/releases)
+> stay available, but it gets no new features, and this repository will be
+> archived when the VS Code extension ships. Meanwhile, `brok setup agents`
+> gives Claude Code, Cursor, VS Code / Copilot and Codex Brokspace search and
+> memory: see [Integrations](https://brokspace.org/docs/integrations).
+
 An IDE with Brokspace built in: local-first search across every repository in
 your folder, an agent that answers from your own LLM with the sources it used,
 reviews and commit messages, skills and shards. Use Brokspace in **IDE mode**
