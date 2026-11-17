@@ -6,6 +6,16 @@
 </p>
 <p align="center"><b>Brokspace IDE: your workspace, understood.</b></p>
 
+> [!WARNING]
+> **Deprecated.** Brokspace IDE is no longer maintained or distributed, and
+> this repository is scheduled for archival. Use
+> [Brokspace for VS Code](https://github.com/brokspace/vscode) instead. It
+> provides the supported editor integration for VS Code, Cursor, Windsurf,
+> Devin Desktop and VSCodium.
+>
+> The material below is retained only as historical reference. Do not use its
+> installers or build instructions for new deployments.
+
 An IDE with Brokspace built in: local-first search across every repository in
 your folder, an agent that answers from your own LLM with the sources it used,
 reviews and commit messages, skills and shards. Use Brokspace in **IDE mode**
